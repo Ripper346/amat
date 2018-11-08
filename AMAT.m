@@ -3,16 +3,16 @@ classdef AMAT < handle
     % TODO: set properties to Transient, Private etc
     % TODO: should setCover() be private?
     properties
-        scales  = 2:41  
-        ws      = 1e-4      
-        vistop  = 0  
+        scales  = 2:41
+        ws      = 1e-4
+        vistop  = 0
         shape   = 'disk'
         axis
         branches
         cost
         depth
         encoding
-        filters 
+        filters
         info
         input
         price
@@ -22,15 +22,21 @@ classdef AMAT < handle
         shapeId
         thetas  % in degrees
     end
-    
+
     properties(Transient)
     end
-    
+
     properties(Access=private)
+        BIG = 1e60
+        covered
+        diskCost
+        diskCostPerPixel
+        diskCostEffective
+        numNewPixelsCovered
     end
-    
-    
-    
+
+
+
     methods
         function mat = AMAT(img,varargin)
             if nargin > 0
@@ -44,7 +50,7 @@ classdef AMAT < handle
                 mat.compute();
             end
         end
-        
+
         function new = clone(mat)
             new = AMAT();
             props = properties(mat);
@@ -60,7 +66,7 @@ classdef AMAT < handle
             mat.setCover();
             profile off; profile viewer;
         end
-        
+
         function initialize(mat,img,varargin)
             defaults = {'scales',   2:41,...
                         'ws',       1e-4,...
@@ -80,19 +86,19 @@ classdef AMAT < handle
             mat.thetas = opts('thetas');
             mat.input   = im2double(img);
             mat.scaleIdx= containers.Map(mat.scales, 1:numel(mat.scales));
-            mat.initializeFilters();            
+            mat.initializeFilters();
         end
-                
+
         function mat = group(mat,marginFactor,colortol)
             if nargin < 2, marginFactor = 1; end
             if nargin < 3, colortol = 0.05; end
-            
+
             % Compute individual radius maps and connected components
             numScales = numel(mat.scales);
             for r=numScales:-1:1
                 cc(r) = bwconncomp(mat.radius == mat.scales(r));
             end
-            
+
             % Initialize mask and maxLabel
             [numRows,numCols,numChannels] = size(mat.input);
             mask = false(numRows,numCols);  % proximity mask
@@ -101,7 +107,7 @@ classdef AMAT < handle
             if colortol
                 mataxis = reshape(rgb2labNormalized(mat.axis), numRows*numCols,numChannels);
             end
-            
+
             % For all scales
             for r=1:numScales
                 cc(r).labels = zeros(1, cc(r).NumObjects); % zero for non-examined ccs
@@ -115,12 +121,12 @@ classdef AMAT < handle
                     xmin = max(1,min(x)-margin); xmax = min(numCols,max(x)+margin);
                     ymin = max(1,min(y)-margin); ymax = min(numRows,max(y)+margin);
                     mask(ymin:ymax,xmin:xmax) = bwdist(mask(ymin:ymax,xmin:xmax)) <= margin;
-                    
+
                     % The cc is assigned a new label, unless it has already been merged
                     if cc(r).labels(i) == 0
                         cc(r).labels(i) = maxLabel;
                     end
-                    
+
                     % Find groups at smaller scales that can potentially be merged
                     mergedLabels = cc(r).labels(i);
                     for rr=(r-1):-1:max(1,r-4)
@@ -130,27 +136,27 @@ classdef AMAT < handle
                             end
                         end
                     end
-                    
+
                     % Merge labels (use the smallest label as the common label)
                     commonLabel = min(mergedLabels);
                     for rr=1:r
                         cc(rr).labels(ismember(cc(rr).labels, mergedLabels)) = commonLabel;
                     end
-                    
+
                     % Merge ccs at the same scale
                     for j=(i+1):cc(r).NumObjects
                         if merge(cc(r).PixelIdxList{j})
                             cc(r).labels(j) = cc(r).labels(i);
                         end
                     end
-                    
+
                     % If the component has not been merged, increase maxLabel
                     if cc(r).labels(i) == maxLabel
                         maxLabel = maxLabel + 1;
                     end
                 end
             end
-            
+
             % Construct label map
             matbranches = zeros(numRows,numCols);
             for r=1:numScales
@@ -158,7 +164,7 @@ classdef AMAT < handle
                     matbranches(cc(r).PixelIdxList{i}) = cc(r).labels(i);
                 end
             end
-            
+
             % Adjust labels. We do not need to explicitly remove the zero labels
             % because cc.labels() does not include any zero (0) labels.
             oldLabels = unique(cat(2, cc(:).labels));
@@ -167,30 +173,30 @@ classdef AMAT < handle
                 matbranches(matbranches == oldLabels(i)) = newLabels(i);
             end
             mat.branches = matbranches;
-            
+
             % Nested functions --------------------------------------------
             function res = merge(idx)
                 res = isCloseSpace(idx);
                 if colortol, res = res && isCloseColor(idx); end
             end
-            
+
             function res = isCloseSpace(idx)
                 res = any(mask(idx));
             end
-            
+
             function res = isCloseColor(idx)
                 res = norm( mean(mataxis(idxcc,:),1)-...
                     mean(mataxis(idx,:),1) ) < colortol;
             end
-            
-            
+
+
         end
-        
+
         function mat = simplify(mat,method,param)
             % Default input arguments
             if nargin < 3, param  = 3; end
             if nargin < 2, method = 'dilation'; end
-            
+
             % Post-processing function
             switch method
                 case 'dilation'
@@ -206,12 +212,12 @@ classdef AMAT < handle
                     error(['Method not supported. Supported methods are:\n' ...
                         'dilation, iso-dilation, skeleton, afmm-skeleton.'])
             end
-            
+
             % Create a new object if there is an output
             if nargout > 0
                 mat = clone(mat);
             end
-            
+
             % The group labels are already sorted and first label is zero (background)
             numBranches = max(mat.branches(:));
             [numRows,numCols,numChannels]     = size(mat.input);
@@ -231,7 +237,7 @@ classdef AMAT < handle
                 else
                     branchNew = bwmorph(process(cover),'thin',inf);
                 end
-                
+
                 % Compute new radii as distance transform on reconstructed cover.
                 radiusNew = bwdist(bwperim(cover)).* double(branchNew);
                 % Find closest radii in the subset of the acceptable scale values.
@@ -244,19 +250,19 @@ classdef AMAT < handle
             end
             assert(all(matbranches(matbranches>0) & matradius(matbranches>0)))
             assert(all(ismember(matradius(matradius>0), mat.scales)))
-            
+
             % Make sure there are no gaps among branch labels
             newLabels = unique(matbranches); newLabels(1) = []; % first group is zero
             for i=1:numel(newLabels)
                 matbranches(matbranches == newLabels(i)) = i;
             end
-            
+
             % Find which pixels have been removed and which have been added
             oldpts  = any(mat.axis,3);
             newpts  = matbranches > 0;
             removed = oldpts & ~newpts;
             added   = newpts & ~oldpts;
-            
+
             % Update depth
             % NOTE: there is a discrepancy between
             % mat2mask(double(newpts).*radius,mat.scales) and
@@ -266,7 +272,7 @@ classdef AMAT < handle
             % depthRemoved = mat2mask(mat.radius.*double(removed), mat.scales);
             mat.radius = matradius;
             mat.computeDepth();
-            
+
             % Update MAT encodings
             [y,x] = find(newpts);
             r   = matradius(newpts);
@@ -276,13 +282,13 @@ classdef AMAT < handle
             idx = sub2ind([numRows,numCols,numScales], y(:),x(:),r(:));
             newaxis = reshape(rgb2labNormalized(zeros(numRows,numCols,numChannels)),numRows*numCols,numChannels);
             newaxis(newpts,:) = enc(idx,:); % remember that encodings are in LAB!
-            
+
             mat.axis = labNormalized2rgb(reshape(newaxis,numRows,numCols,numChannels));
-            mat.branches = matbranches;            
+            mat.branches = matbranches;
             mat.computeReconstruction();
-            
+
         end
-        
+
         function computeEncodings(mat)
             inputlab = rgb2labNormalized(mat.input);
             switch mat.shape
@@ -295,9 +301,9 @@ classdef AMAT < handle
                     encs = computeSquareEncodings(mat,inputlab);
                     mat.encoding = cat(5,encd,encs);
                 otherwise, error('Invalid shape')
-            end            
+            end
         end
-        
+
         function computeCosts(mat)
             switch mat.shape
                 case 'disk'
@@ -311,7 +317,7 @@ classdef AMAT < handle
                 otherwise, error('Invalid shape')
             end
         end
-        
+
         function setCover(mat)
             % -------------------------------------------------------------
             % Greedy approximation of the weighted set cover problem.
@@ -328,134 +334,78 @@ classdef AMAT < handle
             %
             % TODO: is there a way to first sort scores and then pick the next one in
             %       queue, to avoid min(diskCostEffective(:)) in each iteration?
-            
+
             % Initializations
-            [numRows,numCols,numChannels,numScales] = size(mat.encoding);
-            zeroLabNormalized  = rgb2labNormalized(zeros(numRows,numCols,numChannels));
-            mat.input          = reshape(mat.input, numRows*numCols, numChannels);
-            mat.reconstruction = reshape(zeroLabNormalized,numRows*numCols,numChannels);
+            [numRows, numCols, numChannels, numScales] = size(mat.encoding);
+            zeroLabNormalized  = rgb2labNormalized(zeros(numRows, numCols, numChannels));
+            mat.input          = reshape(mat.input,  numRows * numCols,  numChannels);
+            mat.reconstruction = reshape(zeroLabNormalized, numRows*numCols, numChannels);
             mat.axis           = zeroLabNormalized;
-            mat.radius         = zeros(numRows,numCols);
-            mat.depth          = zeros(numRows,numCols); % #disks points(x,y) is covered by
-            mat.price          = zeros(numRows,numCols); % error contributed by each point
-            % Flag border pixels that cannot be accessed by filters.
-            covered = false(numRows,numCols);
-            if strcmp(mat.shape, 'disk')
-                r = mat.scales(1);
-                covered([1:r,end-r+1:end], [1,end]) = true;
-                covered([1,end], [1:r,end-r+1:end]) = true;
-            end
-            BIG = 1e60;
-            
-            % Compute how many pixels are covered by each r-disk.
-            diskAreas = cellfun(@nnz,mat.filters);
-            diskCost  = mat.cost;
-            numNewPixelsCovered = repmat(reshape(diskAreas,1,1,[]), [numRows,numCols]);
-            
-            % Add scale-dependent cost term to favor the selection of larger disks.
-            diskCostPerPixel = diskCost ./ numNewPixelsCovered;
-            diskCostEffective = bsxfun(@plus, diskCostPerPixel, ...
-                reshape(mat.ws ./ mat.scales, 1,1,[]));
-                                    
+            mat.radius         = zeros(numRows, numCols);
+            mat.depth          = zeros(numRows, numCols); % #disks points(x, y) is covered by
+            mat.price          = zeros(numRows, numCols); % error contributed by each point
+            mat.initializeCoveredMatrix(numRows, numCols);
+            mat.calculateDiskCosts(numRows,numCols);
+
             % Print remaining pixels to be covered in these points
-            printBreakPoints = floor((4:-1:1).*(numRows*numCols/5));
-            
+            printBreakPoints = floor((4:-1:1) .* (numRows * numCols / 5));
+
             % GREEDY ALGORITHM STARTS HERE --------------------------------
             fprintf('Pixels remaining: ');
-            [x,y] = meshgrid(1:numCols,1:numRows);
-            while ~all(covered(:))
+            [x,y] = meshgrid(1:numCols, 1:numRows);
+            while ~all(mat.covered(:))
                 % Get disk with min cost
-                [minCost, idxMinCost] = min(diskCostEffective(:));
-                [yc,xc,rc] = ind2sub(size(diskCostEffective), idxMinCost);
+                [minCost, idxMinCost] = min(mat.diskCostEffective(:));
+                [yc, xc, rc] = ind2sub(size(mat.diskCostEffective), idxMinCost);
 
                 if isinf(minCost)
                     warning('Stopping: selected disk has infinite cost.')
                     break;
                 end
-                                
-                % points covered by the selected disk
-                switch mat.shape
-                    case 'disk'
-                        D = (x-xc).^2 + (y-yc).^2 <= mat.scales(rc)^2; 
-                    case 'square'
-                        D = abs(x-xc)<=mat.scales(rc) & abs(y-yc)<=mat.scales(rc); 
-                    case 'mixed' 
-                        error('Mix of disks and squares not supported yet')
-                    otherwise, error('Shape is not supported')
-                end
-                
-                newPixelsCovered = D & ~covered;      % NEW pixels that are covered by D
+
+                areaCovered = mat.getPointsCovered(x, y, xc, yc, rc);
+                newPixelsCovered = areaCovered & ~mat.covered;
                 if ~any(newPixelsCovered(:))
                     keyboard;
                     warning('Stopping: selected disk covers zero (0) new pixels.')
                     break;
                 end
-                
+
                 % Update MAT
-                covered(newPixelsCovered) = true;
-                mat.price(newPixelsCovered) = minCost / numNewPixelsCovered(yc,xc,rc);
-                mat.depth(D) = mat.depth(D) + 1;
-                mat.axis(yc,xc,:) = mat.encoding(yc,xc,:,rc);
-                mat.radius(yc,xc) = mat.scales(rc);    
-                                
-                % Update costs
-                [yy,xx] = find(newPixelsCovered);
-                xminCovered = min(xx); xmaxCovered = max(xx);
-                yminCovered = min(yy); ymaxCovered = max(yy);
-                newPixelsCovered = double(newPixelsCovered);
-                for r=1:numScales
-                    scale = mat.scales(r);
-                    x1 = max(xminCovered-scale,1); 
-                    y1 = max(yminCovered-scale,1);
-                    x2 = min(xmaxCovered+scale,numCols); 
-                    y2 = min(ymaxCovered+scale,numRows);
-                    % Find how many of the newPixelsCovered are covered by other disks.
-                    numPixelsSubtracted = ...
-                        conv2(newPixelsCovered(y1:y2,x1:x2), mat.filters{r},'same');
-                    % and subtract the respective counts from those disks.
-                    numNewPixelsCovered(y1:y2,x1:x2, r) = ...
-                        numNewPixelsCovered(y1:y2,x1:x2, r) - numPixelsSubtracted;
-                    % update diskCost, diskCostPerPixel, and diskCostEfficiency *only* for
-                    % the locations that have been affected, for efficiency.
-                    diskCost(y1:y2,x1:x2, r) = diskCost(y1:y2,x1:x2, r) - ...
-                        numPixelsSubtracted .* diskCostPerPixel(y1:y2,x1:x2, r);
-                    diskCostPerPixel(y1:y2,x1:x2, r) = diskCost(y1:y2,x1:x2, r) ./ ...
-                        max(eps,numNewPixelsCovered(y1:y2,x1:x2, r)) + ... % avoid 0/0
-                        BIG*(numNewPixelsCovered(y1:y2,x1:x2, r) == 0);    % x/0 = inf
-                    diskCostEffective(y1:y2,x1:x2, r) = ...
-                        diskCostPerPixel(y1:y2,x1:x2, r) + mat.ws/mat.scales(r);
-                end
-                % Make sure disk with the same center is not selected again
-                diskCost(yc,xc,:) = BIG;
-                diskCostEffective(yc,xc,:) = BIG;
-                
+                mat.covered(newPixelsCovered) = true;
+                mat.price(newPixelsCovered) = minCost / mat.numNewPixelsCovered(yc, xc, rc);
+                mat.depth(areaCovered) = mat.depth(areaCovered) + 1;
+                mat.axis(yc, xc, :) = mat.encoding(yc, xc, :, rc);
+                mat.radius(yc, xc) = mat.scales(rc);
+                mat.updateCosts(newPixelsCovered, xc, yc, numRows, numCols, numScales);
+
                 % Visualize progress
                 if mat.vistop
-                    mat.showProgress(diskCost, xc, yc, rc, numRows, numCols, numScales, covered);
+                    mat.showProgress(xc, yc, rc, numRows, numCols, numScales);
                 end
-                if ~isempty(printBreakPoints) && nnz(~covered) < printBreakPoints(1)
+                if ~isempty(printBreakPoints) && nnz(~mat.covered) < printBreakPoints(1)
                     fprintf('%d...',printBreakPoints(1))
                     printBreakPoints(1) = [];
                 end
             end
             fprintf('\n')
-            mat.input = reshape(mat.input,numRows,numCols,numChannels);
+            mat.input = reshape(mat.input, numRows, numCols, numChannels);
             mat.axis  = labNormalized2rgb(mat.axis);
-            mat.computeReconstruction();            
+            mat.computeReconstruction();
         end
-        
+
         function visualize(mat)
             % cmap = jet(max(mat.radius(:)));
             subplot(221); imshow(mat.axis);             title('Medial axes');
-            subplot(222); imshow(mat.radius,[]);      title('Radii');
+            subplot(222); imshow(mat.radius,[]);        title('Radii');
             subplot(223); imshow(mat.input);            title('Original image');
             subplot(224); imshow(mat.reconstruction);   title('Reconstructed image');
         end
-        
+
         function depth = computeDepth(mat,rad)
             % rad: double, HxW radius array
-            if nargin < 2 
-                rad = mat.radius; 
+            if nargin < 2
+                rad = mat.radius;
             end
             depth = zeros(size(rad));
             [yc,xc] = find(rad);
@@ -468,18 +418,18 @@ classdef AMAT < handle
                 mat.depth = depth;
             end
         end
-        
+
         function rec = computeReconstruction(mat)
             diskf = cell(1,numel(mat.scales));
             for r=1:numel(diskf)
                 diskf{r} = double(repmat(mat.filters{r}, [1 1 size(mat.input,3)]));
             end
-            
+
             rec = zeros(size(mat.input));
             [yc,xc] = find(mat.radius);
             for p=1:numel(yc)
-                x = xc(p); y = yc(p); 
-                r = round(mat.radius(y,x)); 
+                x = xc(p); y = yc(p);
+                r = round(mat.radius(y,x));
                 c = mat.axis(y,x,:);
                 rec((y-r):(y+r),(x-r):(x+r),:) = ...
                     rec((y-r):(y+r),(x-r):(x+r),:) + bsxfun(@times, diskf{mat.scaleIdx(r)}, c);
@@ -494,7 +444,7 @@ classdef AMAT < handle
             end
             mat.reconstruction = rec;
         end
-        
+
         function seg = computeSegmentation(mat,minCoverage,minSegment)
             % TODO: maybe return segments as well
             % Coverage is a scalar controlling how much % of the image we want to cover
@@ -503,14 +453,14 @@ classdef AMAT < handle
             assert(isscalar(minCoverage) && minCoverage > 0 && minCoverage <= 1, ...
                 'minCoverage must be a scalar in (0,1]')
             assert(isscalar(minSegment), 'minSegment must be scalar')
-            
+
             % Using this function assumes you have already grouped the medial points
             % into branches. A "refined" MAT (using function refineMAT()) is not
             % necessary, although it might lead to better results.
             if isempty(mat.branches)
                 mat.group()
             end
-            
+
             % Compute the depth contribution of each branch separately.
             [numRows,numCols] = size(mat.depth);
             numBranches = max(mat.branches(:));
@@ -518,10 +468,10 @@ classdef AMAT < handle
             for i=1:numBranches
                 depthBranch(:,:,i) = mat.computeDepth(mat.radius .* double(mat.branches == i));
             end
-            
+
             % Segments are the areas covered by individual branches.
             segments = double(depthBranch > 0);
-            
+
             % Sort by segment "importance", which is proportional to the area covered.
             % Because of potential grouping errors, significant areas of the image may
             % be covered by multiple segments, so we must take into account only the
@@ -532,11 +482,11 @@ classdef AMAT < handle
             segments = ((segments - sumSeg) == 0) & (sumSeg > 0);
             [areaSorted, idxSorted] = sort(sum(sum(segments)), 'descend');
             segments = segments(:,:,idxSorted);
-            
+
             % Assign a different label to each segment. After sorting, the smaller the
             % label, the larger the respective segment.
             segments = bsxfun(@times, segments, reshape(1:numBranches,1,1,[]));
-            
+
             % Discard small segments
             if minSegment > 0
                 if minSegment < 1   % ratio of the min segment area over image area
@@ -553,7 +503,7 @@ classdef AMAT < handle
                 segments(:,:,small) = [];
                 areaSorted(small)   = [];
             end
-            
+
             % Keep segments that cover at least (minCoverage*100) % of the image area.
             if minCoverage < 1
                 cumAreaSorted = cumsum(areaSorted)/(numRows*numCols);
@@ -565,7 +515,7 @@ classdef AMAT < handle
                 end
                 segments = segments(:,:,1:numSegmentsKeep);
             end
-            seg = max(segments,[],3);  
+            seg = max(segments,[],3);
         end
 
         function setCoverMex(mat)
@@ -577,9 +527,9 @@ classdef AMAT < handle
             mat.axis = labNormalized2rgb(mat.axis);
             mat.computeReconstruction()
         end
-        
+
     end % end of public methods
-    
+
     methods(Access=private)
         function initializeFilters(mat)
             numScales = numel(mat.scales);
@@ -587,18 +537,18 @@ classdef AMAT < handle
                 case 'disk'
                     mat.filters = cell(1, numScales);
                     for i=1:numScales
-                        mat.filters{i} = AMAT.disk(mat.scales(i)); 
+                        mat.filters{i} = AMAT.disk(mat.scales(i));
                     end
                 case 'square'
                     numShapes = 1 + numel(mat.thetas);
                     mat.filters = cell(numShapes, numScales);
                     for i=1:numScales
-                        mat.filters{1,i} = AMAT.square(mat.scales(i)); 
+                        mat.filters{1,i} = AMAT.square(mat.scales(i));
                     end
                 case 'mixed'
                     numShapes = 2 + numel(mat.thetas);
                     mat.filters = cell(numShapes, numScales);
-                    
+
                     % disks
                     for i=1:numScales
                         mat.filters{1,i} = AMAT.disk(mat.scales(i));
@@ -617,13 +567,13 @@ classdef AMAT < handle
                 end
             end
         end
-        
+
         function enc = computeDiskEncodings(mat,inputlab)
-            % Efficient implementation, using convolutions with 
+            % Efficient implementation, using convolutions with
             % circles + cumsum instead of convolutions with disks.
             [numRows,numCols,numChannels] = size(mat.input);
             numScales = numel(mat.scales);
-            cfilt = cell(1,numScales); 
+            cfilt = cell(1,numScales);
             cfilt{1} = AMAT.disk(mat.scales(1));
             for r=2:numScales, cfilt{r} = AMAT.circle(mat.scales(r)); end
             enc = zeros(numRows,numCols,numChannels,numScales);
@@ -637,34 +587,34 @@ classdef AMAT < handle
             enc   = bsxfun(@rdivide, enc, reshape(areas,1,1,1,[]));
             mat.encoding = enc;
         end
-        
+
         function diskCost = computeDiskCosts(mat)
-            % This function computes a heuristic that represents the 
+            % This function computes a heuristic that represents the
             % ability to reconstruct a disk-shaped part of the input image
             % using the mean RGB values computed over the same area.
             % Intuitively, the idea behind this heuristic is the following:
-            % In order to accurately reconstruct an image disk of radius r 
-            % using its mean RGB values, we must also be able to reconstruct 
-            % *every* fully contained disk of radius r' < r 
+            % In order to accurately reconstruct an image disk of radius r
+            % using its mean RGB values, we must also be able to reconstruct
+            % *every* fully contained disk of radius r' < r
             % (uniformity criterion).
             %
             % Terminology: an r-disk is a disk of radius = r.
             %
-            % The heuristic we use sums all square errors between the 
-            % encoding of an r-disk centered at a point (i,j) and the 
-            % encodings of all FULLY CONTAINED disks. 
+            % The heuristic we use sums all square errors between the
+            % encoding of an r-disk centered at a point (i,j) and the
+            % encodings of all FULLY CONTAINED disks.
             % Written in a simplified mathematical form, for a given r_k-disk:
             % M_rk = sum_i(I_rk)/D_rk; M_ri = sum_i(I_ri)/R_ri;
             % Cost = sum((M_rk-M_ri)^2) for all enclosed ri-disks.
             % Cost = sum( M_rk^2 + M_ri^2 - 2*M_rk*M_ri ) = ...
             % D_rk*enc2 + conv2(enc2) + 2 .* enc .* conv2(enc)
-            % Given an r-disk, filters(r-i+1) is a mask that marks the 
+            % Given an r-disk, filters(r-i+1) is a mask that marks the
             % centers of all contained i-disks.
-            
+
             % Precompute necessary quantitities. We use circular filters applied on
             % cumulative sums instead of disk filters, for efficiency.
             % Disk costs are always the first channel
-            enc       = mat.encoding(:,:,:,:,1); 
+            enc       = mat.encoding(:,:,:,:,1);
             enc2      = enc.^2;
             enccsum   = cumsum(enc,4);
             enc2csum  = cumsum(enc2,4);
@@ -673,7 +623,7 @@ classdef AMAT < handle
             cfilt{1}  = AMAT.disk(mat.scales(1)-1);
             for r=2:numScales, cfilt{r} = AMAT.circle(mat.scales(r-1)); end
             nnzcd = cumsum(cumsum(cellfun(@nnz, cfilt)));
-            
+
             diskCost = zeros(numRows,numCols,numChannels,numScales);
             for c=1:numChannels
                 for r=1:numScales
@@ -686,22 +636,21 @@ classdef AMAT < handle
                     diskCost(:,:,c,r) = enc2(:,:,c,r)*nnzcd(r) + sumMri2 - 2*enc(:,:,c,r).*sumMri;
                 end
             end
-            
+
             % Fix boundary conditions. Setting scale(r)-borders to a very big cost
             % helps us avoid selecting disks that cross the image boundaries.
             % We do not use Inf to avoid complications in the greedy set cover
             % algorithm, caused by inf-inf subtractions and inf/inf divisions.
             % Also, keep in mind that max(0,NaN) = 0.
-            BIG = 1e60;
             for r=1:numScales
                 scale = mat.scales(r);
-                diskCost([1:scale, end-scale+1:end],:,:,r) = BIG;
-                diskCost(:,[1:scale, end-scale+1:end],:,r) = BIG;
+                diskCost([1:scale, end-scale+1:end],:,:,r) = mat.BIG;
+                diskCost(:,[1:scale, end-scale+1:end],:,r) = mat.BIG;
             end
-            
+
             % Sometimes due to numerical errors, cost are slightly negative. Fix this.
             diskCost = max(0,diskCost);
-            
+
             % Combine costs from different channels
             if numChannels > 1
                 wc = [0.5,0.25,0.25]; % weights for luminance and color channels
@@ -709,11 +658,11 @@ classdef AMAT < handle
             end
             diskCost = squeeze(diskCost);
         end
-        
+
         function enc = computeSquareEncodings(mat,inputlab)
-            [numRows,numCols,numChannels] = size(mat.input); 
+            [numRows,numCols,numChannels] = size(mat.input);
             numScales = numel(mat.scales);
-            
+
             % Since square filters are separable, using filter2 + full
             % filters is more efficient than using integral images.
             squareIndex = min(2,size(mat.filters,1));
@@ -726,7 +675,7 @@ classdef AMAT < handle
             end
             areas = (2*mat.scales+1).^2;
             enc   = bsxfun(@rdivide, enc, reshape(areas,1,1,1,[]));
-            
+
             % Optionally compute encodings for rotated squares
             if ~isempty(mat.thetas)
                 encrot = computeRotatedSquareEncodings(mat, cumsum(inputlab,1));
@@ -739,7 +688,7 @@ classdef AMAT < handle
             pad = ceil(sqrt(2)*mat.scales(end)); % square radius
             integralColumns = padarray(integralColumns,[pad,pad],0,'pre');
             integralColumns = padarray(integralColumns,[pad,pad],'replicate','post');
-            [numRows,numCols,numChannels] = size(integralColumns); 
+            [numRows,numCols,numChannels] = size(integralColumns);
             numScales = numel(mat.scales);
             O = numel(mat.thetas);
             % Rotated square filters and integral filters
@@ -759,10 +708,10 @@ classdef AMAT < handle
             end
             % Areas of rotated square filters
             areas = cellfun(@nnz, rotfilt);
-            
+
             % Compute heuristic encodings for rotated square filters
             enc = zeros(numRows,numCols,numChannels,numScales,O);
-            for o=1:O 
+            for o=1:O
                 for r=1:numScales
                     for c=1:numChannels
                         enc(:,:,c,r,o) = filter2(pfilt{o,r}, integralColumns)/areas(o,r);
@@ -771,7 +720,7 @@ classdef AMAT < handle
             end
             enc = enc(pad+1:end-pad,pad+1:end-pad,:,:,:);
         end
-        
+
         function squareCost = computeSquareCosts(mat)
             % Similar to computeDiskCosts() but for square filters.
             % If we only use square filters, then enc is the first channel,
@@ -799,15 +748,14 @@ classdef AMAT < handle
                     squareCost(:,:,c,r) = enc2(:,:,c,r)*nnzcs(r) + sumMri2 - 2*enc(:,:,c,r).*sumMri;
                 end
             end
-            
+
             % Same postprocesssing as computeDiskCosts
-            BIG = 1e60;
             for r=1:numScales
                 scale = mat.scales(r);
-                squareCost([1:scale, end-scale+1:end],:,:,r,:) = BIG;
-                squareCost(:,[1:scale, end-scale+1:end],:,r,:) = BIG;
+                squareCost([1:scale, end-scale+1:end],:,:,r,:) = mat.BIG;
+                squareCost(:,[1:scale, end-scale+1:end],:,r,:) = mat.BIG;
             end
-                        
+
             % Compute costs for rotated squares
             if ~isempty(mat.thetas)
                 O = numel(mat.thetas);
@@ -816,15 +764,15 @@ classdef AMAT < handle
                 squareRotCost = computeRotatedSquareCosts(mat,encrot,enc2rot);
                 for r=1:numScales
                     scalerot = ceil(sqrt(2)*mat.scales(r)); % square "radius"
-                    squareRotCost([1:scalerot, end-scalerot+1:end],:,:,r,:) = BIG;
-                    squareRotCost(:,[1:scalerot, end-scalerot+1:end],:,r,:) = BIG;
+                    squareRotCost([1:scalerot, end-scalerot+1:end],:,:,r,:) = mat.BIG;
+                    squareRotCost(:,[1:scalerot, end-scalerot+1:end],:,r,:) = mat.BIG;
                 end
                 squareCost = cat(5,squareCost, squareRotCost);
-            end            
-            
+            end
+
             % Sometimes due to numerical errors, costs are slightly negative.
             squareCost = max(0,squareCost);
-            
+
             % Combine costs from different channels
             if numChannels > 1
                 wc = [0.5,0.25,0.25]; % weights for luminance and color channels
@@ -834,7 +782,7 @@ classdef AMAT < handle
             end
             squareCost = squeeze(squareCost);
         end
-                
+
         function squareRotCost = computeRotatedSquareCosts(mat,enc,enc2)
             % Integral columns used to efficiently compute sums inside
             % areas of rotated squares
@@ -845,10 +793,10 @@ classdef AMAT < handle
             encic  = padarray(encic,  [pad pad],'replicate','post');
             enc2ic = padarray(enc2ic, [pad pad],0,'pre');
             enc2ic = padarray(enc2ic, [pad pad],'replicate','post');
-            [numRows,numCols,numChannels] = size(encic); 
+            [numRows,numCols,numChannels] = size(encic);
             numScales = numel(mat.scales);
             O = numel(mat.thetas);
-            
+
             % Rotated square filters and integral filters
             sfilt   = cell(1,numScales);
             rotfilt = cell(O,numScales);
@@ -888,11 +836,81 @@ classdef AMAT < handle
             squareRotCost = squareRotCost(pad+1:end-pad, pad+1:end-pad,:,:,:);
         end
 
-        function showProgress(mat, diskCost, xc, yc, rc, numRows, numCols, numScales, covered)
+        function initializeCoveredMatrix(mat, numRows, numCols)
+            mat.covered = false(numRows, numCols);
+            % Flag border pixels that cannot be accessed by filters
+            if strcmp(mat.shape, 'disk')
+                r = mat.scales(1);
+                mat.covered([1:r, end - r + 1:end], [1, end]) = true;
+                mat.covered([1, end], [1:r, end - r + 1:end]) = true;
+            end
+        end
+
+        function calculateDiskCosts(mat, numRows, numCols)
+            % Compute how many pixels are covered by each r-disk.
+            diskAreas = cellfun(@nnz, mat.filters);
+            mat.diskCost = mat.cost;
+            mat.numNewPixelsCovered = repmat(reshape(diskAreas, 1, 1, []), [numRows, numCols]);
+
+            % Add scale-dependent cost term to favor the selection of larger disks.
+            mat.diskCostPerPixel = mat.diskCost ./ mat.numNewPixelsCovered;
+            mat.diskCostEffective = bsxfun(@plus, mat.diskCostPerPixel, ...
+                reshape(mat.ws ./ mat.scales, 1, 1, []));
+        end
+
+        function area = getPointsCovered(mat, x, y, xc, yc, rc)
+            switch mat.shape
+                case 'disk'
+                    area = (x-xc) .^ 2 + (y - yc) .^ 2 <= mat.scales(rc) ^ 2;
+                case 'square'
+                    area = abs(x - xc) <= mat.scales(rc) & abs(y - yc) <= mat.scales(rc);
+                case 'mixed'
+                    error('Mix of disks and squares not supported yet');
+                otherwise
+                    error('Shape is not supported');
+            end
+        end
+
+        function updateCosts(mat, newPixelsCovered, xc, yc, numRows, numCols, numScales)
+            % Update costs
+            [yy, xx] = find(newPixelsCovered);
+            xminCovered = min(xx);
+            xmaxCovered = max(xx);
+            yminCovered = min(yy);
+            ymaxCovered = max(yy);
+            newPixelsCovered = double(newPixelsCovered);
+            for r = 1:numScales
+                scale = mat.scales(r);
+                x1 = max(xminCovered - scale, 1);
+                y1 = max(yminCovered - scale, 1);
+                x2 = min(xmaxCovered + scale, numCols);
+                y2 = min(ymaxCovered + scale, numRows);
+                % Find how many of the newPixelsCovered are covered by other disks.
+                numPixelsSubtracted = ...
+                    conv2(newPixelsCovered(y1:y2, x1:x2), mat.filters{r}, 'same');
+                % and subtract the respective counts from those disks.
+                mat.numNewPixelsCovered(y1:y2, x1:x2, r) = ...
+                    mat.numNewPixelsCovered(y1:y2, x1:x2, r) - numPixelsSubtracted;
+                % update diskCost, diskCostPerPixel, and diskCostEfficiency *only* for
+                % the locations that have been affected, for efficiency.
+                mat.diskCost(y1:y2, x1:x2, r) = mat.diskCost(y1:y2, x1:x2, r) - ...
+                    numPixelsSubtracted .* mat.diskCostPerPixel(y1:y2, x1:x2, r);
+                mat.diskCostPerPixel(y1:y2, x1:x2, r) = mat.diskCost(y1:y2, x1:x2, r) ./ ...
+                    max(eps, mat.numNewPixelsCovered(y1:y2, x1:x2, r)) + ... % avoid 0/0
+                    mat.BIG * (mat.numNewPixelsCovered(y1:y2, x1:x2, r) == 0);    % x/0 = inf
+                mat.diskCostEffective(y1:y2, x1:x2, r) = ...
+                    mat.diskCostPerPixel(y1:y2, x1:x2, r) + mat.ws/mat.scales(r);
+            end
+            % Make sure disk with the same center is not selected again
+            mat.diskCost(yc, xc, :) = mat.BIG;
+            mat.diskCostEffective(yc, xc, :) = mat.BIG;
+        end
+
+        function showProgress(mat, xc, yc, rc, numRows, numCols, numScales)
             % Function called when enabled vistop parameter.
             % It shows 4 different progress perspectives: selected disk, covered image, found axex in CIELAB and found radii.
             mat.showProgressSelectedDisk(221, xc, yc, rc, numRows, numCols);
-            mat.showProgressCovered(222, diskCost, xc, yc, rc, numRows, numCols, numScales, covered);
+            mat.showProgressCovered(222, xc, yc, rc, numRows, numCols, numScales);
             mat.showProgressAxesCIELAB(223);
             mat.showProgressRadii(224);
             drawnow;
@@ -905,17 +923,17 @@ classdef AMAT < handle
             title(sprintf('Selected disk,  radius: %d',  rc));
         end
 
-        function showProgressCovered(mat, subplotIndex, diskCost, xc, yc, rc, numRows, numCols, numScales, covered)
+        function showProgressCovered(mat, subplotIndex, xc, yc, rc, numRows, numCols, numScales)
             % Sort costs in ascending order to visualize updated top disks.
-            [~, indSorted] = sort(diskCost(:), 'ascend');
+            [~, indSorted] = sort(mat.diskCost(:), 'ascend');
             [yy, xx, rr] = ind2sub([numRows, numCols, numScales],  indSorted(1:mat.vistop));
             subplot(subplotIndex);
-            imshow(bsxfun(@times,  reshape(mat.input, numRows, numCols, []),  double(~covered)));
+            imshow(bsxfun(@times,  reshape(mat.input, numRows, numCols, []),  double(~mat.covered)));
             viscircles([xx, yy], rr, 'Color', 'w', 'EnhanceVisibility', false, 'Linewidth', 0.5);
             viscircles([xx(1), yy(1)], rr(1), 'Color', 'b', 'EnhanceVisibility', false);
             viscircles([xc, yc], rc, 'Color', 'y', 'EnhanceVisibility', false);
             title(sprintf('Covered %d/%d,  numCols: Top-%d disks, \nB: Top-1 disk,  Y: previous disk', ...
-                nnz(covered), numRows*numCols, mat.vistop));
+                nnz(mat.covered), numRows * numCols, mat.vistop));
         end
 
         function showProgressAxesCIELAB(mat, subplotIndex)
@@ -929,29 +947,29 @@ classdef AMAT < handle
             imshow(mat.radius, []);
             title('AMAT radii');
         end
-                                        
+
     end
-    
+
     methods (Static)
         function d = disk(r)
             r = double(r); % make sure r can take negative values
             [x,y] = meshgrid(-r:r, -r:r);
             d = double(x.^2 + y.^2 <= r^2);
         end
-        
+
         function s = square(r,theta)
             s = ones(2*r+1);
             if nargin > 1
                 s = imrotate(s,theta);
             end
         end
-        
+
         function c = circle(r)
             r = double(r); % make sure r can take negative values
             [x,y] = meshgrid(-r:r, -r:r);
             c = double((x.^2 + y.^2 <= r^2) & (x.^2 + y.^2 > (r-1)^2));
         end
     end
-    
-    
+
+
 end
