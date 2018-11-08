@@ -107,7 +107,7 @@ classdef AMAT < handle
                 cc(r).labels = zeros(1, cc(r).NumObjects); % zero for non-examined ccs
                 margin = ceil(marginFactor*r)+1;
                 % For all connected components at the same scale
-                for i=1:cc(r).NumObjects;
+                for i=1:cc(r).NumObjects
                     % Create proximity mask in rectangle around cc for efficiency
                     mask(:) = false; mask(cc(r).PixelIdxList{i}) = true;
                     idxcc = cc(r).PixelIdxList{i};
@@ -368,7 +368,7 @@ classdef AMAT < handle
                 [minCost, idxMinCost] = min(diskCostEffective(:));
                 [yc,xc,rc] = ind2sub(size(diskCostEffective), idxMinCost);
 
-                if isinf(minCost),
+                if isinf(minCost)
                     warning('Stopping: selected disk has infinite cost.')
                     break;
                 end
@@ -426,24 +426,12 @@ classdef AMAT < handle
                         diskCostPerPixel(y1:y2,x1:x2, r) + mat.ws/mat.scales(r);
                 end
                 % Make sure disk with the same center is not selected again
-                diskCost(yc,xc,:) = BIG; diskCostEffective(yc,xc,:) = BIG;
+                diskCost(yc,xc,:) = BIG;
+                diskCostEffective(yc,xc,:) = BIG;
                 
                 % Visualize progress
-                if mat.vistop 
-                    % Sort costs in ascending order to visualize updated top disks.
-                    [~, indSorted] = sort(diskCost(:),'ascend');
-                    [yy,xx,rr] = ind2sub([numRows,numCols,numScales], indSorted(1:mat.vistop));
-                    subplot(221); imshow(reshape(mat.input, numRows,numCols,[]));
-                    viscircles([xc,yc],rc, 'Color','k','EnhanceVisibility',false); title('Selected disk');
-                    subplot(222); imshow(bsxfun(@times, reshape(mat.input,numRows,numCols,[]), double(~covered)));
-                    viscircles([xx,yy],rr,'Color','w','EnhanceVisibility',false,'Linewidth',0.5);
-                    viscircles([xx(1),yy(1)],rr(1),'Color','b','EnhanceVisibility',false);
-                    viscircles([xc,yc],rc,'Color','y','EnhanceVisibility',false);
-                    title(sprintf('Covered %d/%d, numCols: Top-%d disks,\nB: Top-1 disk, Y: previous disk',...
-                        nnz(covered),numRows*numCols,mat.vistop))
-                    subplot(223); imshow(mat.axis); title('AMAT axes (in CIELAB)')
-                    subplot(224); imshow(mat.radius,[]); title('AMAT radii')
-                    drawnow;
+                if mat.vistop
+                    mat.showProgress(diskCost, xc, yc, rc, numRows, numCols, numScales, covered);
                 end
                 if ~isempty(printBreakPoints) && nnz(~covered) < printBreakPoints(1)
                     fprintf('%d...',printBreakPoints(1))
@@ -588,7 +576,7 @@ classdef AMAT < handle
                 setCoverGreedy(mat,zeroLabNormalized);
             mat.axis = labNormalized2rgb(mat.axis);
             mat.computeReconstruction()
-        end        
+        end
         
     end % end of public methods
     
@@ -633,8 +621,10 @@ classdef AMAT < handle
         function enc = computeDiskEncodings(mat,inputlab)
             % Efficient implementation, using convolutions with 
             % circles + cumsum instead of convolutions with disks.
-            [numRows,numCols,numChannels] = size(mat.input); numScales = numel(mat.scales);
-            cfilt = cell(1,numScales); cfilt{1} = AMAT.disk(mat.scales(1));
+            [numRows,numCols,numChannels] = size(mat.input);
+            numScales = numel(mat.scales);
+            cfilt = cell(1,numScales); 
+            cfilt{1} = AMAT.disk(mat.scales(1));
             for r=2:numScales, cfilt{r} = AMAT.circle(mat.scales(r)); end
             enc = zeros(numRows,numCols,numChannels,numScales);
             for c=1:numChannels
@@ -896,6 +886,48 @@ classdef AMAT < handle
                 end
             end
             squareRotCost = squareRotCost(pad+1:end-pad, pad+1:end-pad,:,:,:);
+        end
+
+        function showProgress(mat, diskCost, xc, yc, rc, numRows, numCols, numScales, covered)
+            % Function called when enabled vistop parameter.
+            % It shows 4 different progress perspectives: selected disk, covered image, found axex in CIELAB and found radii.
+            mat.showProgressSelectedDisk(221, xc, yc, rc, numRows, numCols);
+            mat.showProgressCovered(222, diskCost, xc, yc, rc, numRows, numCols, numScales, covered);
+            mat.showProgressAxesCIELAB(223);
+            mat.showProgressRadii(224);
+            drawnow;
+        end
+
+        function showProgressSelectedDisk(mat, subplotIndex, xc, yc, rc, numRows, numCols)
+            subplot(subplotIndex);
+            imshow(reshape(mat.input, numRows, numCols, []));
+            viscircles([xc, yc], rc,  'Color', 'k', 'EnhanceVisibility', false);
+            title(sprintf('Selected disk,  radius: %d',  rc));
+        end
+
+        function showProgressCovered(mat, subplotIndex, diskCost, xc, yc, rc, numRows, numCols, numScales, covered)
+            % Sort costs in ascending order to visualize updated top disks.
+            [~, indSorted] = sort(diskCost(:), 'ascend');
+            [yy, xx, rr] = ind2sub([numRows, numCols, numScales],  indSorted(1:mat.vistop));
+            subplot(subplotIndex);
+            imshow(bsxfun(@times,  reshape(mat.input, numRows, numCols, []),  double(~covered)));
+            viscircles([xx, yy], rr, 'Color', 'w', 'EnhanceVisibility', false, 'Linewidth', 0.5);
+            viscircles([xx(1), yy(1)], rr(1), 'Color', 'b', 'EnhanceVisibility', false);
+            viscircles([xc, yc], rc, 'Color', 'y', 'EnhanceVisibility', false);
+            title(sprintf('Covered %d/%d,  numCols: Top-%d disks, \nB: Top-1 disk,  Y: previous disk', ...
+                nnz(covered), numRows*numCols, mat.vistop));
+        end
+
+        function showProgressAxesCIELAB(mat, subplotIndex)
+            subplot(subplotIndex);
+            imshow(mat.axis);
+            title('AMAT axes (in CIELAB)');
+        end
+
+        function showProgressRadii(mat, subplotIndex)
+            subplot(subplotIndex);
+            imshow(mat.radius, []);
+            title('AMAT radii');
         end
                                         
     end
