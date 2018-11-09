@@ -38,6 +38,9 @@ classdef AMAT < handle
 
 
     methods
+        setCover(mat);
+        showImg(mat, xc, yc, rc, numRows, numCols, numScales);
+        
         function mat = AMAT(img, varargin)
             if nargin > 0
                 % Optionally copy from input AMAT object
@@ -325,89 +328,6 @@ classdef AMAT < handle
             end
         end
 
-        function setCover(mat)
-            % -------------------------------------------------------------
-            % Greedy approximation of the weighted set cover problem.
-            % -------------------------------------------------------------
-            % - Disk cost: cost incurred by selecting ena r-disk, centered at (i, j).
-            % - numNewPixelsCovered: number of NEW pixels covered by a selected disk.
-            % - Cost per pixel: diskCost / numNewPixelsCovered.
-            % - Disk cost effective: adjusted normalized cost: diskCostPerPixel + scaleTerm
-            % where scaleTerm is a term that favors selecting disks of larger
-            % radii. Such a term is necessary, to resolve selection of disks in
-            % the case where diskCost is zero for more than on radii.
-            % NOTE: Even when using other types of shapes too (e.g.
-            % squares), we still refer to them as "disks".
-            %
-            % TODO: is there a way to first sort scores and then pick the next one in
-            % queue, to avoid min(diskCostEffective(:)) in each iteration?
-
-            % Initializations
-            [numRows, numCols, numChannels, numScales] = size(mat.encoding);
-            zeroLabNormalized = rgb2labNormalized(zeros(numRows, numCols, numChannels));
-            mat.input = reshape(mat.input, numRows * numCols, numChannels);
-            mat.reconstruction = reshape(zeroLabNormalized, numRows * numCols, numChannels);
-            mat.axis = zeroLabNormalized;
-            mat.radius = zeros(numRows, numCols);
-            mat.depth = zeros(numRows, numCols); % #disks points(x, y) is covered by
-            mat.price = zeros(numRows, numCols); % error contributed by each point
-            mat.initializeCoveredMatrix(numRows, numCols);
-            mat.calculateDiskCosts(numRows, numCols);
-            % Print remaining pixels to be covered in these points
-            printBreakPoints = floor((4:-1:1) .* (numRows * numCols / 5));
-
-            % GREEDY ALGORITHM STARTS HERE --------------------------------
-            fprintf('Pixels remaining: ');
-            [x, y] = meshgrid(1:numCols, 1:numRows);
-            while ~all(mat.covered(:))
-                % Get disk with min cost
-                [minCost, idxMinCost] = min(mat.diskCostEffective(:));
-                [yc, xc, rc] = ind2sub(size(mat.diskCostEffective), idxMinCost);
-
-                if isinf(minCost)
-                    warning('Stopping: selected disk has infinite cost.');
-                    break;
-                end
-
-                areaCovered = mat.getPointsCovered(x, y, xc, yc, rc);
-                newPixelsCovered = areaCovered & ~mat.covered;
-                if ~any(newPixelsCovered(:))
-                    keyboard;
-                    warning('Stopping: selected disk covers zero (0) new pixels.');
-                    break;
-                end
-
-                % Update MAT
-                mat.covered(newPixelsCovered) = true;
-                mat.price(newPixelsCovered) = minCost / mat.numNewPixelsCovered(yc, xc, rc);
-                mat.depth(areaCovered) = mat.depth(areaCovered) + 1;
-                mat.axis(yc, xc, :) = mat.encoding(yc, xc, :, rc);
-                mat.radius(yc, xc) = mat.scales(rc);
-                mat.updateCosts(newPixelsCovered, xc, yc, numRows, numCols, numScales);
-
-                % Visualize progress
-                if mat.vistop
-                    mat.showProgress(xc, yc, rc, numRows, numCols, numScales);
-                end
-                if ~isempty(printBreakPoints) && nnz(~mat.covered) < printBreakPoints(1)
-                    fprintf('%d...', printBreakPoints(1));
-                    printBreakPoints(1) = [];
-                end
-            end
-            fprintf('\n');
-            mat.input = reshape(mat.input, numRows, numCols, numChannels);
-            mat.axis = labNormalized2rgb(mat.axis);
-            mat.computeReconstruction();
-        end
-
-        function visualize(mat)
-            % cmap = jet(max(mat.radius(:)));
-            subplot(221); imshow(mat.axis);           title('Medial axes');
-            subplot(222); imshow(mat.radius, []);     title('Radii');
-            subplot(223); imshow(mat.input);          title('Original image');
-            subplot(224); imshow(mat.reconstruction); title('Reconstructed image');
-        end
-
         function depth = computeDepth(mat, rad)
             % rad: double, HxW radius array
             if nargin < 2
@@ -535,7 +455,7 @@ classdef AMAT < handle
             mat.axis = labNormalized2rgb(mat.axis);
             mat.computeReconstruction()
         end
-
+        
     end % end of public methods
 
     methods(Access=private)
@@ -916,48 +836,6 @@ classdef AMAT < handle
             % Make sure disk with the same center is not selected again
             mat.diskCost(yc, xc, :) = mat.BIG;
             mat.diskCostEffective(yc, xc, :) = mat.BIG;
-        end
-
-        function showProgress(mat, xc, yc, rc, numRows, numCols, numScales)
-            % Function called when enabled vistop parameter.
-            % It shows 4 different progress perspectives: selected disk, covered image, found axex in CIELAB and found radii.
-            mat.showProgressSelectedDisk(221, xc, yc, rc, numRows, numCols);
-            mat.showProgressCovered(222, xc, yc, rc, numRows, numCols, numScales);
-            mat.showProgressAxesCIELAB(223);
-            mat.showProgressRadii(224);
-            drawnow;
-        end
-
-        function showProgressSelectedDisk(mat, subplotIndex, xc, yc, rc, numRows, numCols)
-            subplot(subplotIndex);
-            imshow(reshape(mat.input, numRows, numCols, []));
-            viscircles([xc, yc], rc, 'Color', 'k', 'EnhanceVisibility', false);
-            title(sprintf('Selected disk, radius: %d', rc));
-        end
-
-        function showProgressCovered(mat, subplotIndex, xc, yc, rc, numRows, numCols, numScales)
-            % Sort costs in ascending order to visualize updated top disks.
-            [~, indSorted] = sort(mat.diskCost(:), 'ascend');
-            [yy, xx, rr] = ind2sub([numRows, numCols, numScales], indSorted(1:mat.vistop));
-            subplot(subplotIndex);
-            imshow(bsxfun(@times, reshape(mat.input, numRows, numCols, []), double(~mat.covered)));
-            viscircles([xx, yy], rr, 'Color', 'w', 'EnhanceVisibility', false, 'Linewidth', 0.5);
-            viscircles([xx(1), yy(1)], rr(1), 'Color', 'b', 'EnhanceVisibility', false);
-            viscircles([xc, yc], rc, 'Color', 'y', 'EnhanceVisibility', false);
-            title(sprintf('Covered %d/%d, numCols: Top-%d disks, \nB: Top-1 disk, Y: previous disk', ...
-                nnz(mat.covered), numRows * numCols, mat.vistop));
-        end
-
-        function showProgressAxesCIELAB(mat, subplotIndex)
-            subplot(subplotIndex);
-            imshow(mat.axis);
-            title('AMAT axes (in CIELAB)');
-        end
-
-        function showProgressRadii(mat, subplotIndex)
-            subplot(subplotIndex);
-            imshow(mat.radius, []);
-            title('AMAT radii');
         end
 
     end
