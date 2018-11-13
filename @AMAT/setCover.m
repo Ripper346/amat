@@ -76,7 +76,7 @@ end
 function initializeCoveredMatrix(mat, numRows, numCols)
     mat.covered = false(numRows, numCols);
     % Flag border pixels that cannot be accessed by filters
-    if strcmp(mat.shape, 'disk')
+    if isa(mat.shape, 'Disk')
         r = mat.scales(1);
         mat.covered([1:r, end - r + 1:end], [1, end]) = true;
         mat.covered([1, end], [1:r, end - r + 1:end]) = true;
@@ -96,15 +96,12 @@ function calculateDiskCosts(mat, numRows, numCols)
 end
 
 function area = getPointsCovered(mat, x, y, xc, yc, rc)
-    switch mat.shape
-        case 'disk'
-            area = (x - xc) .^ 2 + (y - yc) .^ 2 <= mat.scales(rc) ^ 2;
-        case 'square'
-            area = abs(x - xc) <= mat.scales(rc) & abs(y - yc) <= mat.scales(rc);
-        case 'mixed'
-            error('Mix of disks and squares not supported yet');
-        otherwise
-            error('Shape is not supported');
+    if isa(mat.shape, 'cell')
+        error('Mix of shapes not supported yet');
+    elseif mat.shape ~= NaN
+        area = mat.shape.getArea(x, y, xc, yc, mat.scales(rc));
+    else
+        error('Shape is not supported');
     end
 end
 

@@ -1,4 +1,4 @@
-function enc = computeSquareEncodings(mat, inputlab)
+function enc = computeSquareEncodings(sq, mat, inputlab)
     [numRows, numCols, numChannels] = size(mat.input);
     numScales = numel(mat.scales);
 

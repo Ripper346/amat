@@ -1,4 +1,4 @@
-function costs = computeDiskCosts(mat)
+function costs = computeCosts(ds, mat)
     % This function computes a heuristic that represents the
     % ability to reconstruct a disk-shaped part of the input image
     % using the mean RGB values computed over the same area.
@@ -30,7 +30,7 @@ function costs = computeDiskCosts(mat)
     enc2csum = cumsum(enc2, 4);
     [numRows, numCols, numChannels, numScales] = size(enc);
     cfilt = cell(1, numScales);
-    cfilt{1} = AMAT.disk(mat.scales(1) - 1);
+    cfilt{1} = Disk.get(mat.scales(1) - 1);
     for r = 2:numScales
         cfilt{r} = AMAT.circle(mat.scales(r - 1));
     end

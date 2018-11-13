@@ -1,4 +1,4 @@
-function costs = computeSquareCosts(mat)
+function costs = computeSquareCosts(sq, mat)
     % Similar to computeDiskCosts() but for square filters.
     % If we only use square filters, then enc is the first channel,
     % otherwise it's the second channel
@@ -6,8 +6,8 @@ function costs = computeSquareCosts(mat)
     enc = mat.encoding(:, :, :, :, squareIndex);
     enc2 = enc .^ 2;
     [numRows, numCols, numChannels, numScales] = size(enc);
-    sfilt = cell(1, numScales); sfilt{1} = AMAT.square(mat.scales(1) - 1);
-    for r = 2:numScales, sfilt{r} = AMAT.square(mat.scales(r - 1)); end
+    sfilt = cell(1, numScales); sfilt{1} = Square.get(mat.scales(1) - 1);
+    for r = 2:numScales, sfilt{r} = Square.get(mat.scales(r - 1)); end
     nnzcs= cumsum(cellfun(@nnz, sfilt)); % cumsum of square areas
 
     % Compute costs for axis-aligned squares
@@ -78,9 +78,9 @@ function squareRotCost = computeRotatedSquareCosts(mat, enc, enc2)
     sfilt = cell(1, numScales);
     rotfilt = cell(O, numScales);
     pfilt = cell(O, numScales);
-    sfilt{1} = AMAT.square(mat.scales(1) - 1);
+    sfilt{1} = Square.get(mat.scales(1) - 1);
     for r = 2:numScales
-        sfilt{r} = AMAT.square(mat.scales(r - 1));
+        sfilt{r} = Square.get(mat.scales(r - 1));
     end
     for r = 1:numScales
         for o = 1:O

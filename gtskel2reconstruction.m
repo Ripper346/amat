@@ -3,7 +3,7 @@ function [rec,comp] = gtskel2reconstruction(img,pts,rad)
 
 scales = 2:41;
 diskf = cell(1,numel(scales)); 
-for r=1:numel(diskf), diskf{r} = double(AMAT.disk(scales(r))); end
+for r=1:numel(diskf), diskf{r} = double(Disk.get(scales(r))); end
 rind = containers.Map(scales,1:numel(scales));
 
 [H,W,C]   = size(img);

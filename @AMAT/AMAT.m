@@ -3,10 +3,11 @@ classdef AMAT < handle
     % TODO: set properties to Transient, Private etc
     % TODO: should setCover() be private?
     properties
-        scales  = 2:41
-        ws      = 1e-4
-        vistop  = 0
-        shape   = 'disk'
+        scales   = 2:41
+        ws       = 1e-4
+        vistop   = 0
+        shapeStr = 'disk'
+        shape    = NaN
         axis
         branches
         cost
@@ -21,13 +22,13 @@ classdef AMAT < handle
         scaleIdx
         shapeId
         thetas  % in degrees
+        BIG = 1e60
     end
 
     properties(Transient)
     end
 
     properties(Access=private)
-        BIG = 1e60
         covered
         diskCost
         diskCostPerPixel
@@ -80,32 +81,26 @@ classdef AMAT < handle
 
         function computeEncodings(mat)
             inputlab = rgb2labNormalized(mat.input);
-            switch mat.shape
-                case 'disk'
-                    mat.encoding = mat.computeDiskEncodings(inputlab);
-                case 'square'
-                    mat.encoding = mat.computeSquareEncodings(inputlab);
-                case 'mixed'
-                    encd = mat.computeDiskEncodings(inputlab);
-                    encs = mat.computeSquareEncodings(inputlab);
-                    mat.encoding = cat(5, encd, encs);
-                otherwise
-                    error('Invalid shape');
+            if isa(mat.shape, 'cell')
+                encd = mat.shape{1}.computeEncodings(mat, inputlab);
+                encs = mat.shape{2}.computeEncodings(mat, inputlab);
+                mat.encoding = cat(5, encd, encs);
+            elseif mat.shape ~= NaN
+                mat.encoding = mat.shape.computeEncodings(mat, inputlab);
+            else
+                error('Invalid shape');
             end
         end
 
         function computeCosts(mat)
-            switch mat.shape
-                case 'disk'
-                    mat.cost = mat.computeDiskCosts();
-                case 'square'
-                    mat.cost = mat.computeSquareCosts();
-                case 'mixed'
-                    dcost = mat.computeDiskCosts();
-                    scost = mat.computeSquareCosts();
-                    mat.cost = cat(4, dcost, scost);
-                otherwise
-                    error('Invalid shape');
+            if isa(mat.shape, 'cell')
+                dcost = mat.shape{1}.computeCosts(mat);
+                scost = mat.shape{2}.computeCosts(mat);
+                mat.cost = cat(4, dcost, scost);
+            elseif mat.shape ~= NaN
+                mat.cost = mat.shape.computeCosts(mat);
+            else
+                error('Invalid shape');
             end
         end
 
@@ -240,19 +235,6 @@ classdef AMAT < handle
     end % end of public methods
 
     methods (Static)
-        function d = disk(r)
-            r = double(r); % make sure r can take negative values
-            [x, y] = meshgrid(-r:r, -r:r);
-            d = double(x .^ 2 + y .^ 2 <= r ^ 2);
-        end
-
-        function s = square(r, theta)
-            s = ones(2 * r + 1);
-            if nargin > 1
-                s = imrotate(s, theta);
-            end
-        end
-
         function c = circle(r)
             r = double(r); % make sure r can take negative values
             [x, y] = meshgrid(-r:r, -r:r);
