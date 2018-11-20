@@ -3,7 +3,8 @@ function initialize(mat, img, varargin)
                 'ws', 1e-4, ...
                 'vistop', 0, ...
                 'shape', 'disk', ...
-                'thetas', []
+                'thetas', [], ...
+                'gif', 0
                 };
     opts = parseVarargin(defaults, varargin);
     if isscalar(opts('scales'))
@@ -15,8 +16,10 @@ function initialize(mat, img, varargin)
     mat.vistop = opts('vistop');
     mat.shapeStr = opts('shape');
     mat.thetas = opts('thetas');
+    mat.gif = opts('gif');
     mat.input = im2double(img);
     mat.scaleIdx = containers.Map(mat.scales, 1:numel(mat.scales));
+    initializeProgresses(mat);
     initializeShape(mat);
     initializeFilters(mat);
 end
@@ -51,5 +54,14 @@ function initializeShape(mat)
             mat.shape = {Disk() Square()};
         otherwise
             error('Invalid shape');
+    end
+end
+
+function initializeProgresses(mat)
+    if mat.vistop > 0
+        mat.fig = figure('Name', 'Progress', 'rend', 'painters', 'pos', [10 10 900 600]);
+        if mat.gif == 1
+            mat.gifFilename = strcat('progress_', datestr(datetime, 'yyyy-mm-dd_HH.MM.SS'), '.gif');
+        end
     end
 end

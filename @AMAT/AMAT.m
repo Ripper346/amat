@@ -29,6 +29,9 @@ classdef AMAT < handle
     end
 
     properties(Access=private)
+        fig
+        gif
+        gifFilename
         covered
         diskCost
         diskCostPerPixel
@@ -42,6 +45,7 @@ classdef AMAT < handle
         mat = simplify(mat, method, param);
         setCover(mat);
         showImg(mat, xc, yc, rc, numRows, numCols, numScales);
+        exportGif(mat, filename);
 
         costs = computeDiskCosts(mat);
         enc = computeDiskEncodings(mat, inputlab);

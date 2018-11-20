@@ -5,7 +5,11 @@ function showImg(mat, xc, yc, rc, numRows, numCols, numScales)
             exist('numRows') == 1 && ...
             exist('numCols') == 1 && ...
             exist('numScales') == 1
+        set(0,'CurrentFigure',mat.fig);
         showProgress(mat, xc, yc, rc, numRows, numCols, numScales);
+        if mat.gif == 1
+            mat.exportGif();
+        end
     else
         showFinal(mat);
     end
