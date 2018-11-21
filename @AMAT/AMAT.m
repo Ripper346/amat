@@ -31,7 +31,8 @@ classdef AMAT < handle
     properties(Access=private)
         fig
         gif
-        gifFilename
+        logProgress
+        progFilename
         covered
         diskCost
         diskCostPerPixel
@@ -50,6 +51,7 @@ classdef AMAT < handle
         setCover(mat);
         showImg(mat, xc, yc, rc, numRows, numCols, numScales);
         exportGif(mat, filename);
+        logNeighborhood(mat, xc, yc);
 
         costs = computeDiskCosts(mat);
         enc = computeDiskEncodings(mat, inputlab);

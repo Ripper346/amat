@@ -4,7 +4,8 @@ function initialize(mat, img, varargin)
                 'vistop', 0, ...
                 'shape', 'disk', ...
                 'thetas', [], ...
-                'gif', 0
+                'gif', 0, ...
+                'log', 0
                 };
     opts = parseVarargin(defaults, varargin);
     if isscalar(opts('scales'))
@@ -16,6 +17,7 @@ function initialize(mat, img, varargin)
     mat.vistop = opts('vistop');
     mat.shapeStr = opts('shape');
     mat.thetas = opts('thetas');
+    mat.logProgress = opts('log');
     mat.gif = opts('gif');
     mat.input = im2double(img);
     mat.scaleIdx = containers.Map(mat.scales, 1:numel(mat.scales));
@@ -60,8 +62,6 @@ end
 function initializeProgresses(mat)
     if mat.vistop > 0
         mat.fig = figure('Name', 'Progress', 'rend', 'painters', 'pos', [10 10 900 600]);
-        if mat.gif == 1
-            mat.gifFilename = strcat('progress_', datestr(datetime, 'yyyy-mm-dd_HH.MM.SS'), '.gif');
-        end
+        mat.progFilename = strcat('progress_', datestr(datetime, 'yyyy-mm-dd_HH.MM.SS'));
     end
 end

@@ -50,6 +50,10 @@ function setCover(mat)
             break;
         end
 
+        if mat.logProgress
+            mat.logNeighborhood(xc, yc);
+        end
+
         % Update MAT
         mat.covered(newPixelsCovered) = true;
         mat.price(newPixelsCovered) = minCost / mat.numNewPixelsCovered(yc, xc, rc);

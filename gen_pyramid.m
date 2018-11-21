@@ -19,7 +19,7 @@ function [pyramid] = gen_pyramid(img, min_size, filter, k)
     pyramid{1} = im2double(img);
 
     % parse kernel to use
-    if exist('filter') == 1 && strcmp(filter, 'kernel')
+    if exist('filter', 'var') == 1 && strcmp(filter, 'kernel')
         kernel = k;
     elseif nargin < 3
         kernel = get_kernel();
@@ -56,7 +56,7 @@ function [imgout] = pyramid_reduce(img, filter, k)
 %          see supported filters in get_kernel function
 % k - optioal. Kernel matrix or costant to use in filters
 
-    if exist('filter') == 1 && strcmp(filter, 'kernel')
+    if exist('filter', 'var') == 1 && strcmp(filter, 'kernel')
         kernel = k;
     elseif nargin < 2
         kernel = get_kernel();

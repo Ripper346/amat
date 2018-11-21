@@ -3,9 +3,10 @@ function exportGif(mat)
     frame = getframe(mat.fig);
     im = frame2im(frame);
     [imind, cm] = rgb2ind(im, 256);
-    if isfile(mat.gifFilename)
-        imwrite(imind, cm, mat.gifFilename, 'gif', 'WriteMode', 'append');
+    filename = strcat(mat.progFilename, '.gif');
+    if isfile(filename)
+        imwrite(imind, cm, filename, 'gif', 'WriteMode', 'append');
     else
-        imwrite(imind, cm, mat.gifFilename, 'gif', 'Loopcount', inf);
+        imwrite(imind, cm, filename, 'gif', 'Loopcount', inf);
     end
 end
