@@ -42,8 +42,8 @@ end
 
 function showProgressCovered(mat, subplotIndex, xc, yc, rc, numRows, numCols, numScales)
     % Sort costs in ascending order to visualize updated top disks.
-    [~, indSorted] = sort(mat.diskCost(:), 'ascend');
-    [yy, xx, rr] = ind2sub([numRows, numCols, numScales], indSorted(1:mat.vistop));
+    [~, indSorted] = mink(mat.diskCost(:), mat.vistop);
+    [yy, xx, rr] = ind2sub([numRows, numCols, numScales], indSorted);
     subplot(subplotIndex);
     imshow(bsxfun(@times, reshape(mat.input, numRows, numCols, []), double(~mat.covered)));
     viscircles([xx, yy], rr, 'Color', 'w', 'EnhanceVisibility', false, 'Linewidth', 0.5);
