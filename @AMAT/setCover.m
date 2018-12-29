@@ -61,6 +61,9 @@ function setCover(mat)
         mat.axis(yc, xc, :) = mat.encoding(yc, xc, :, rc);
         mat.radius(yc, xc) = mat.scales(rc);
         updateCosts(mat, newPixelsCovered, xc, yc, numRows, numCols, numScales);
+        if mat.logProgress
+            mat.logNeighborhood(xc, yc);
+        end
 
         % Visualize progress
         if mat.vistop

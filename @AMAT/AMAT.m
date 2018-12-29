@@ -58,7 +58,7 @@ classdef AMAT < handle
 
         costs = computeSquareCosts(mat);
         enc = computeSquareEncodings(mat, inputlab);
-        
+
         function mat = AMAT(img, varargin)
             if nargin > 0
                 % Optionally copy from input AMAT object
@@ -89,7 +89,7 @@ classdef AMAT < handle
             mat.axis = labNormalized2rgb(mat.axis);
             mat.computeReconstruction()
         end
-        
+
     end % end of public methods
 
     methods (Static)
