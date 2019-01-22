@@ -49,6 +49,7 @@ classdef AMAT < handle
         seg = computeSegmentation(mat, minCoverage, minSegment);
         depth = computeDepth(mat, rad);
         setCover(mat);
+        update(mat, minCost, areaCovered, xc, yc, rc, newPixelsCovered, numRows, numCols, numScales);
         showImg(mat, xc, yc, rc, numRows, numCols, numScales);
         exportGif(mat, filename);
         logNeighborhood(mat, xc, yc);
