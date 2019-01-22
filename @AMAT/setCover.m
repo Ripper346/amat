@@ -34,15 +34,20 @@ function setCover(mat)
     [x, y] = meshgrid(1:numCols, 1:numRows);
     while ~all(mat.covered(:))
         % Get disk with min cost
-        [minCost, idxMinCost] = min(mat.diskCostEffective(:));
-        [yc, xc, rc] = ind2sub(size(mat.diskCostEffective), idxMinCost);
+        if mat.followNeighbors <= 1
+            [minCost, idxMinCost] = min(mat.diskCostEffective(:));
+            [yc, xc, rc] = ind2sub(size(mat.diskCostEffective), idxMinCost);
+            if mat.followNeighbors == 1
+                mat.followNeighbors = 2
+            end
+        end
 
         if isinf(minCost)
             warning('Stopping: selected disk has infinite cost.');
             break;
         end
 
-        areaCovered = getPointsCovered(mat, x, y, xc, yc, rc);
+        areaCovered = mat.getPointsCovered(x, y, xc, yc, rc);
         newPixelsCovered = areaCovered & ~mat.covered;
         if ~any(newPixelsCovered(:))
             keyboard;
@@ -65,6 +70,9 @@ function setCover(mat)
         if ~isempty(printBreakPoints) && nnz(~mat.covered) < printBreakPoints(1)
             fprintf('%d...', printBreakPoints(1));
             printBreakPoints(1) = [];
+        end
+        if mat.followNeighbors > 0
+            [minCost, idxMinCost, yc, xc, rc] = mat.coverNeighbors(xc, yc, x, y, 0, numRows, numCols, numScales);
         end
     end
     fprintf('\n');
@@ -93,14 +101,4 @@ function calculateDiskCosts(mat, numRows, numCols)
     mat.diskCostPerPixel = mat.diskCost ./ mat.numNewPixelsCovered;
     mat.diskCostEffective = bsxfun(@plus, mat.diskCostPerPixel, ...
         reshape(mat.ws ./ mat.scales, 1, 1, []));
-end
-
-function area = getPointsCovered(mat, x, y, xc, yc, rc)
-    if isa(mat.shape, 'cell')
-        error('Mix of shapes not supported yet');
-    elseif mat.shape ~= NaN
-        area = mat.shape.getArea(x, y, xc, yc, mat.scales(rc));
-    else
-        error('Shape is not supported');
-    end
 end

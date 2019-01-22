@@ -5,7 +5,8 @@ function initialize(mat, img, varargin)
                 'shape', 'disk', ...
                 'thetas', [], ...
                 'gif', 0, ...
-                'log', 0
+                'log', 0, ...
+                'followNeighbors', 0
                 };
     opts = parseVarargin(defaults, varargin);
     if isscalar(opts('scales'))
@@ -19,6 +20,7 @@ function initialize(mat, img, varargin)
     mat.thetas = opts('thetas');
     mat.logProgress = opts('log');
     mat.gif = opts('gif');
+    mat.followNeighbors = opts('followNeighbors');
     mat.input = im2double(img);
     mat.scaleIdx = containers.Map(mat.scales, 1:numel(mat.scales));
     initializeProgresses(mat);
