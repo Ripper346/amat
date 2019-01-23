@@ -29,8 +29,8 @@ classdef AMAT < handle
     end
 
     properties(Access=private)
-        topNeighSelection = 15
-        followNeighbors   = 0
+        topNeighSelection
+        followNeighbors
         fig
         gif
         logProgress
@@ -53,6 +53,7 @@ classdef AMAT < handle
         setCover(mat);
         area = getPointsCovered(mat, x, y, xc, yc, rc)
         update(mat, minCost, areaCovered, xc, yc, rc, newPixelsCovered, numRows, numCols, numScales);
+        [minCost, idxMinCost, yMin, xMin, rMin] = coverNeighbors(mat, xc, yc, x, y, pathNum, numRows, numCols, numScales);
         showImg(mat, xc, yc, rc, numRows, numCols, numScales);
         exportGif(mat, filename);
         logNeighborhood(mat, xc, yc);

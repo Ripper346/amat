@@ -1,18 +1,17 @@
 function [minCost, idxMinCost, yMin, xMin, rMin] = coverNeighbors(mat, xc, yc, x, y, pathNum, numRows, numCols, numScales)
-    if pathNum
-        disp(pathNum);
+    while true
+        [minCost, idxMinCost, yMin, xMin, rMin, topIndexes] = getTop(mat);
+        [neighbor] = getTopNeighbor(mat, xc, yc, topIndexes);
+        if isempty(neighbor); return; end
+        [yc, xc, rc] = ind2sub(size(mat.diskCostEffective), neighbor);
+        areaCovered = mat.getPointsCovered(x, y, xc, yc, rc);
+        newPixelsCovered = areaCovered & ~mat.covered;
+        mat.update(minCost, areaCovered, xc, yc, rc, newPixelsCovered, numRows, numCols, numScales);
+        if mat.vistop
+            mat.showImg(xc, yc, rc, numRows, numCols, numScales);
+        end
+        [minCost, idxMinCost, yMin, xMin, rMin] = mat.coverNeighbors(xc, yc, x, y, pathNum + 1, numRows, numCols, numScales);
     end
-    [minCost, idxMinCost, yMin, xMin, rMin, topIndexes] = getTop(mat);
-    [neighbor] = getTopNeighbor(mat, xc, yc, topIndexes);
-    if isempty(neighbor); return; end
-    [yc, xc, rc] = ind2sub(size(mat.diskCostEffective), neighbor);
-    areaCovered = mat.getPointsCovered(x, y, xc, yc, rc);
-    newPixelsCovered = areaCovered & ~mat.covered;
-    mat.update(minCost, areaCovered, xc, yc, rc, newPixelsCovered, numRows, numCols, numScales);
-    if mat.vistop
-        mat.showImg(xc, yc, rc, numRows, numCols, numScales);
-    end
-    [minCost, idxMinCost, yMin, xMin, rMin] = mat.coverNeighbors(xc, yc, x, y, pathNum + 1, numRows, numCols, numScales);
 end
 
 function [minCost, idxMinCost, yc, xc, rc, ind] = getTop(mat)
