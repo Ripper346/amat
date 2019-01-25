@@ -1,8 +1,8 @@
-function [pyramid] = gen_pyramid(img, min_size, filter, k)
+function [pyramid] = gen_pyramid(mat, img, min_size, filter, k)
 % Generation of images' pyramid.
 % img - result of imread on a image
 % min_size - optional. Minimum size of pyramid top
-% filter - optional. Name of the filter to use. Use name 'kernel' associated with k matrix of kernel or 
+% filter - optional. Name of the filter to use. Use name 'kernel' associated with k matrix of kernel or
 %          see supported filters in get_kernel function
 % k - optioal. Kernel matrix or costant to use in filters
 
@@ -10,10 +10,10 @@ function [pyramid] = gen_pyramid(img, min_size, filter, k)
         % if min_size not defined assumed 1x1 top
         min_size = 1;
     end
-    
+
     img_size = size(img);
     min_img_size = min(img_size(1:2));
-    
+
     pyramid_levels = ceil(log2(min_img_size) - log2(min_size)) + 1;
     pyramid = cell(pyramid_levels, 1);
     pyramid{1} = im2double(img);
@@ -52,7 +52,7 @@ end
 function [imgout] = pyramid_reduce(img, filter, k)
 % Reduce an image by half size.
 % img - result of imread on a image
-% filter - optional. Name of the filter to use. Use name 'kernel' associated with k matrix of kernel or 
+% filter - optional. Name of the filter to use. Use name 'kernel' associated with k matrix of kernel or
 %          see supported filters in get_kernel function
 % k - optioal. Kernel matrix or costant to use in filters
 

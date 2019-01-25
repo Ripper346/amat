@@ -1,22 +1,31 @@
 function mat = compute(mat)
+    profile on;
+    if mat.usePyramid
+        mat.imgs = mat.generatePyramid(mat.input, mat.pyramidOpts{:});
+    else
+        mat.imgs = {mat.input};
+    end
     computeEncodings(mat);
     computeCosts(mat);
-    profile on;
-    mat.setCover();
+    for i = 1:size(mat.imgs, 1)
+        mat.setCover();
+    end
     profile off;
     profile viewer;
 end
 
 function computeEncodings(mat)
-    inputlab = rgb2labNormalized(mat.input);
-    if isa(mat.shape, 'cell')
-        encd = mat.shape{1}.computeEncodings(mat, inputlab);
-        encs = mat.shape{2}.computeEncodings(mat, inputlab);
-        mat.encoding = cat(5, encd, encs);
-    elseif mat.shape ~= NaN
-        mat.encoding = mat.shape.computeEncodings(mat, inputlab);
-    else
-        error('Invalid shape');
+    for i = 1:size(mat.imgs, 1)
+        inputlab = rgb2labNormalized(mat.imgs(i));
+        if isa(mat.shape, 'cell')
+            encd = mat.shape{1}.computeEncodings(mat, inputlab);
+            encs = mat.shape{2}.computeEncodings(mat, inputlab);
+            mat.encoding(i) = cat(5, encd, encs);
+        elseif mat.shape ~= NaN
+            mat.encoding(i) = mat.shape.computeEncodings(mat, inputlab);
+        else
+            error('Invalid shape');
+        end
     end
 end
 

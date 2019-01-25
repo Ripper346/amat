@@ -12,7 +12,7 @@ classdef AMAT < handle
         branches
         cost
         depth
-        encoding
+        encoding = {}
         filters
         info
         input
@@ -38,6 +38,8 @@ classdef AMAT < handle
         diskCostPerPixel
         diskCostEffective
         numNewPixelsCovered
+        usePyramid
+        pyramidOpts
     end
 
     methods
@@ -53,6 +55,7 @@ classdef AMAT < handle
         showImg(mat, xc, yc, rc, numRows, numCols, numScales);
         exportGif(mat, filename);
         logNeighborhood(mat, xc, yc);
+        pyramid = gen_pyramid(mat, img, min_size, filter, k);
 
         costs = computeDiskCosts(mat);
         enc = computeDiskEncodings(mat, inputlab);

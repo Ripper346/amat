@@ -5,7 +5,8 @@ function initialize(mat, img, varargin)
                 'shape', 'disk', ...
                 'thetas', [], ...
                 'gif', 0, ...
-                'log', 0
+                'log', 0, ...,
+                'pyramid', {}
                 };
     opts = parseVarargin(defaults, varargin);
     if isscalar(opts('scales'))
@@ -19,6 +20,14 @@ function initialize(mat, img, varargin)
     mat.thetas = opts('thetas');
     mat.logProgress = opts('log');
     mat.gif = opts('gif');
+    mat.usePyramid = 0;
+    if isscalar(opts('pyramid'))
+        mat.usePyramid = 1;
+        mat.pyramidOpts = {};
+    elseif size(opts('pyramid'), 1)
+        mat.usePyramid = 1;
+        mat.pyramidOpts = opts('pyramid');
+    end
     mat.input = im2double(img);
     mat.scaleIdx = containers.Map(mat.scales, 1:numel(mat.scales));
     initializeProgresses(mat);
@@ -53,7 +62,7 @@ function initializeShape(mat)
         case 'square'
             mat.shape = Square();
         case 'mixed'
-            mat.shape = {Disk() Square()};
+            mat.shape = {Disk(), Square()};
         otherwise
             error('Invalid shape');
     end
