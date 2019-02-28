@@ -1,4 +1,4 @@
-function setCover(mat)
+function setCover(mat, idx)
     % -------------------------------------------------------------
     % Greedy approximation of the weighted set cover problem.
     % -------------------------------------------------------------
@@ -16,34 +16,33 @@ function setCover(mat)
     % queue, to avoid min(diskCostEffective(:)) in each iteration?
 
     % Initializations
-    [numRows, numCols, numChannels, numScales] = size(mat.encoding);
-    zeroLabNormalized = rgb2labNormalized(zeros(numRows, numCols, numChannels));
-    mat.input = reshape(mat.input, numRows * numCols, numChannels);
-    mat.reconstruction = reshape(zeroLabNormalized, numRows * numCols, numChannels);
-    mat.axis = zeroLabNormalized;
-    mat.radius = zeros(numRows, numCols);
-    mat.depth = zeros(numRows, numCols); % #disks points(x, y) is covered by
-    mat.price = zeros(numRows, numCols); % error contributed by each point
-    initializeCoveredMatrix(mat, numRows, numCols);
-    calculateDiskCosts(mat, numRows, numCols);
+    current = mat.levels{idx};
+    zeroLabNormalized = rgb2labNormalized(zeros(current.numRows, current.numCols, current.numChannels));
+    current.result = reshape(current.img, current.numRows * current.numCols, current.numChannels);
+    current.reconstruction = reshape(zeroLabNormalized, current.numRows * current.numCols, current.numChannels);
+    current.axis = zeroLabNormalized;
+    current.radius = zeros(current.numRows, current.numCols);
+    current.depth = zeros(current.numRows, current.numCols); % #disks points(x, y) is covered by
+    current.price = zeros(current.numRows, current.numCols); % error contributed by each point
+    current.covered = initializeCoveredMatrix(mat, current);
+    calculateDiskCosts(mat, current);
     % Print remaining pixels to be covered in these points
-    printBreakPoints = floor((4:-1:1) .* (numRows * numCols / 5));
+    printBreakPoints = floor((4:-1:1) .* (current.numRows * current.numCols / 5));
 
     % GREEDY ALGORITHM STARTS HERE --------------------------------
     fprintf('Pixels remaining: ');
-    [x, y] = meshgrid(1:numCols, 1:numRows);
-    while ~all(mat.covered(:))
+    while ~all(current.covered(:))
         % Get disk with min cost
-        [minCost, idxMinCost] = min(mat.diskCostEffective(:));
-        [yc, xc, rc] = ind2sub(size(mat.diskCostEffective), idxMinCost);
+        [minCost, idxMinCost] = min(current.diskCostEffective(:));
+        [yc, xc, rc] = ind2sub(size(current.diskCostEffective), idxMinCost);
 
         if isinf(minCost)
             warning('Stopping: selected disk has infinite cost.');
             break;
         end
 
-        areaCovered = getPointsCovered(mat, x, y, xc, yc, rc);
-        newPixelsCovered = areaCovered & ~mat.covered;
+        areaCovered = getPointsCovered(mat, current, xc, yc, rc);
+        newPixelsCovered = areaCovered & ~current.covered;
         if ~any(newPixelsCovered(:))
             keyboard;
             warning('Stopping: selected disk covers zero (0) new pixels.');
@@ -51,55 +50,55 @@ function setCover(mat)
         end
 
         if mat.logProgress
-            mat.logNeighborhood(xc, yc);
+            mat.logNeighborhood(current, xc, yc);
         end
-        mat.update(minCost, areaCovered, xc, yc, rc, newPixelsCovered, numRows, numCols, numScales);
+        mat.update(current, minCost, xc, yc, rc, newPixelsCovered);
         if mat.logProgress
-            mat.logNeighborhood(xc, yc);
+            mat.logNeighborhood(current, xc, yc);
         end
 
         % Visualize progress
         if mat.vistop
-            mat.showImg(xc, yc, rc, numRows, numCols, numScales);
+            mat.showImg(current, xc, yc, rc);
         end
-        if ~isempty(printBreakPoints) && nnz(~mat.covered) < printBreakPoints(1)
+        if ~isempty(printBreakPoints) && nnz(~current.covered) < printBreakPoints(1)
             fprintf('%d...', printBreakPoints(1));
             printBreakPoints(1) = [];
         end
     end
     fprintf('\n');
-    mat.input = reshape(mat.input, numRows, numCols, numChannels);
-    mat.axis = labNormalized2rgb(mat.axis);
-    mat.computeReconstruction();
+    current.result = reshape(current.result, current.numRows, current.numCols, current.numChannels);
+    current.axis = labNormalized2rgb(current.axis);
+    mat.computeReconstruction(current);
 end
 
-function initializeCoveredMatrix(mat, numRows, numCols)
-    mat.covered = false(numRows, numCols);
+function covered = initializeCoveredMatrix(mat, level)
+    covered = false(level.numRows, level.numCols);
     % Flag border pixels that cannot be accessed by filters
     if isa(mat.shape, 'Disk')
-        r = mat.scales(1);
-        mat.covered([1:r, end - r + 1:end], [1, end]) = true;
-        mat.covered([1, end], [1:r, end - r + 1:end]) = true;
+        r = level.scales(1);
+        covered([1:r, end - r + 1:end], [1, end]) = true;
+        covered([1, end], [1:r, end - r + 1:end]) = true;
     end
 end
 
-function calculateDiskCosts(mat, numRows, numCols)
+function calculateDiskCosts(mat, level)
     % Compute how many pixels are covered by each r-disk.
-    diskAreas = cellfun(@nnz, mat.filters);
-    mat.diskCost = mat.cost;
-    mat.numNewPixelsCovered = repmat(reshape(diskAreas, 1, 1, []), [numRows, numCols]);
+    diskAreas = cellfun(@nnz, level.filters);
+    level.diskCost = level.cost;
+    level.numNewPixelsCovered = repmat(reshape(diskAreas, 1, 1, []), [level.numRows, level.numCols]);
 
     % Add scale-dependent cost term to favor the selection of larger disks.
-    mat.diskCostPerPixel = mat.diskCost ./ mat.numNewPixelsCovered;
-    mat.diskCostEffective = bsxfun(@plus, mat.diskCostPerPixel, ...
-        reshape(mat.ws ./ mat.scales, 1, 1, []));
+    level.diskCostPerPixel = level.diskCost ./ level.numNewPixelsCovered;
+    level.diskCostEffective = bsxfun(@plus, level.diskCostPerPixel, ...
+        reshape(mat.ws ./ level.scales, 1, 1, []));
 end
 
-function area = getPointsCovered(mat, x, y, xc, yc, rc)
+function area = getPointsCovered(mat, level, xc, yc, rc)
     if isa(mat.shape, 'cell')
         error('Mix of shapes not supported yet');
     elseif mat.shape ~= NaN
-        area = mat.shape.getArea(x, y, xc, yc, mat.scales(rc));
+        area = mat.shape.getArea(level.x, level.y, xc, yc, level.scales(rc));
     else
         error('Shape is not supported');
     end

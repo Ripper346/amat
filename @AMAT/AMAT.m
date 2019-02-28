@@ -22,6 +22,7 @@ classdef AMAT < handle
         scaleIdx
         shapeId
         thetas  % in degrees
+        levels
         BIG = 1e60
     end
 
@@ -47,14 +48,15 @@ classdef AMAT < handle
         mat = group(mat, marginFactor, colortol);
         mat = simplify(mat, method, param);
         mat = compute(mat);
-        rec = computeReconstruction(mat);
+        rec = computeReconstruction(mat, level);
         seg = computeSegmentation(mat, minCoverage, minSegment);
         depth = computeDepth(mat, rad);
-        setCover(mat);
-        update(mat, minCost, areaCovered, xc, yc, rc, newPixelsCovered, numRows, numCols, numScales);
-        showImg(mat, xc, yc, rc, numRows, numCols, numScales);
+        setLevelParams(mat, imgs);
+        setCover(mat, idx);
+        update(mat, level, minCost, xc, yc, rc, newPixelsCovered);
+        showImg(mat, level, xc, yc, rc);
         exportGif(mat, filename);
-        logNeighborhood(mat, xc, yc);
+        logNeighborhood(mat, level, xc, yc);
         pyramid = gen_pyramid(mat, img, min_size, filter, k);
 
         costs = computeDiskCosts(mat);
