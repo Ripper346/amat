@@ -32,27 +32,6 @@ function initialize(mat, img, varargin)
     mat.scaleIdx = containers.Map(mat.scales, 1:numel(mat.scales));
     initializeProgresses(mat);
     initializeShape(mat);
-    initializeFilters(mat);
-end
-
-function initializeFilters(mat)
-    numScales = numel(mat.scales);
-    if isa(mat.shape, 'cell')
-        for sh = 1:numel(mat.shapes)
-            mat.filters{sh} = mat.shapes(sh).getFilters(mat, numScales);
-        end
-    elseif mat.shape ~= NaN
-        mat.filters = mat.shape.getFilters(mat, numScales);
-    else
-        error('Invalid filter shape');
-    end
-    % squares with rotations
-    k = size(mat.filters, 1); % dimension corresponding to square
-    for d = 1:numel(mat.thetas)
-        for i = 1:numScales
-            mat.filters{k + d, i} = Square.get(mat.scales(i), mat.thetas(d));
-        end
-    end
 end
 
 function initializeShape(mat)
