@@ -22,8 +22,13 @@ classdef AMAT < handle
         scaleIdx
         shapeId
         thetas  % in degrees
-        levels
         BIG = 1e60
+        img
+        result
+        numScales
+        numRows
+        numCols
+        numChannels
     end
 
     properties(Transient)
@@ -41,6 +46,9 @@ classdef AMAT < handle
         numNewPixelsCovered
         usePyramid
         pyramidOpts
+        x
+        y
+        levels
     end
 
     methods
@@ -48,16 +56,15 @@ classdef AMAT < handle
         mat = group(mat, marginFactor, colortol);
         mat = simplify(mat, method, param);
         mat = compute(mat);
-        rec = computeReconstruction(mat, level);
+        rec = computeReconstruction(mat);
         seg = computeSegmentation(mat, minCoverage, minSegment);
         depth = computeDepth(mat, rad);
-        setLevelParams(mat, imgs);
-        setCover(mat, idx);
-        update(mat, level, minCost, xc, yc, rc, newPixelsCovered);
-        showImg(mat, level, xc, yc, rc);
+        setCover(mat);
+        update(mat, minCost, areaCovered, xc, yc, rc, newPixelsCovered);
+        showImg(mat, xc, yc, rc);
         exportGif(mat, filename);
-        logNeighborhood(mat, level, xc, yc);
-        pyramid = gen_pyramid(mat, img, min_size, filter, k);
+        logNeighborhood(mat, xc, yc);
+        pyramid = generatePyramid(mat, img, minSize, filter, k);
 
         costs = computeDiskCosts(mat);
         enc = computeDiskEncodings(mat, inputlab);
@@ -65,16 +72,20 @@ classdef AMAT < handle
         costs = computeSquareCosts(mat);
         enc = computeSquareEncodings(mat, inputlab);
 
-        function mat = AMAT(img, varargin)
+        function mat = AMAT(origin, varargin)
             if nargin > 0
                 % Optionally copy from input AMAT object
-                if isa(img, 'AMAT')
-                    mat = img.clone();
-                    img = mat.input;
+                if isa(origin, 'AMAT')
+                    mat.ws = origin.ws;
+                    mat.shape = origin.shape;
+                    mat.thetas = origin.thetas;
+                    mat.vistop = origin.vistop;
+                    mat.scaleIdx = origin.scaleIdx;
+                else
+                    assert(ismatrix(origin) || size(origin, 3) == 3, 'Input image must be 2D or 3D array')
+                    mat.initialize(origin, varargin{:});
+                    mat.compute();
                 end
-                assert(ismatrix(img) || size(img, 3) == 3, 'Input image must be 2D or 3D array')
-                mat.initialize(img, varargin{:});
-                mat.compute();
             end
         end
 
@@ -97,6 +108,10 @@ classdef AMAT < handle
         end
 
     end % end of public methods
+
+    methods (Access=private)
+        initializeFigure(mat, forced);
+    end
 
     methods (Static)
         function c = circle(r)

@@ -30,7 +30,6 @@ function initialize(mat, img, varargin)
     end
     mat.input = im2double(img);
     mat.scaleIdx = containers.Map(mat.scales, 1:numel(mat.scales));
-    initializeProgresses(mat);
     initializeShape(mat);
 end
 
@@ -44,12 +43,5 @@ function initializeShape(mat)
             mat.shape = {Disk(), Square()};
         otherwise
             error('Invalid shape');
-    end
-end
-
-function initializeProgresses(mat)
-    if mat.vistop > 0
-        mat.fig = figure('Name', 'Progress', 'rend', 'painters', 'pos', [10 10 900 600]);
-        mat.progFilename = strcat('progress_', datestr(datetime, 'yyyy-mm-dd_HH.MM.SS'));
     end
 end

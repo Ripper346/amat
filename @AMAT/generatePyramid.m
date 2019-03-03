@@ -1,42 +1,42 @@
-function [pyramid] = gen_pyramid(mat, img, min_size, filter, k)
+function [pyramid] = generatePyramid(mat, img, minSize, filter, k)
 % Generation of images' pyramid.
 % img - result of imread on a image
-% min_size - optional. Minimum size of pyramid top
+% minSize - optional. Minimum size of pyramid top
 % filter - optional. Name of the filter to use. Use name 'kernel' associated with k matrix of kernel or
-%          see supported filters in get_kernel function
+%          see supported filters in getKernel function
 % k - optioal. Kernel matrix or costant to use in filters
 
-    if nargin < 2
-        % if min_size not defined assumed 1x1 top
-        min_size = 1;
+    if nargin <= 2
+        % if minSize not defined assumed 1x1 top
+        minSize = 1;
     end
 
-    img_size = size(img);
-    min_img_size = min(img_size(1:2));
+    imgSize = size(img);
+    minImgSize = min(imgSize(1:2));
 
-    pyramid_levels = ceil(log2(min_img_size) - log2(min_size)) + 1;
-    pyramid = cell(pyramid_levels, 1);
+    pyramidLevels = ceil(log2(minImgSize) - log2(minSize)) + 1;
+    pyramid = cell(pyramidLevels, 1);
     pyramid{1} = im2double(img);
 
     % parse kernel to use
     if exist('filter', 'var') == 1 && strcmp(filter, 'kernel')
         kernel = k;
     elseif nargin < 3
-        kernel = get_kernel();
+        kernel = getKernel();
     elseif nargin < 4
-        kernel = get_kernel(filter);
+        kernel = getKernel(filter);
     else
-        kernel = get_kernel(filter, k);
+        kernel = getKernel(filter, k);
     end
 
     % generating pyramid
-    for i = 2:pyramid_levels
-        pyramid{i} = pyramid_reduce(pyramid{i - 1}, 'kernel', kernel);
+    for i = 2:pyramidLevels
+        pyramid{i} = pyramidReduce(pyramid{i - 1}, 'kernel', kernel);
     end
 end
 
 
-function [y] = cubic_filter(x, k)
+function [y] = cubicFilter(x, k)
 % Compute cubic filter coefficient for 2x decimation.
     if x >= 2
         y = 0.0;
@@ -49,21 +49,21 @@ function [y] = cubic_filter(x, k)
 end
 
 
-function [imgout] = pyramid_reduce(img, filter, k)
+function [imgout] = pyramidReduce(img, filter, k)
 % Reduce an image by half size.
 % img - result of imread on a image
 % filter - optional. Name of the filter to use. Use name 'kernel' associated with k matrix of kernel or
-%          see supported filters in get_kernel function
+%          see supported filters in getKernel function
 % k - optioal. Kernel matrix or costant to use in filters
 
     if exist('filter', 'var') == 1 && strcmp(filter, 'kernel')
         kernel = k;
     elseif nargin < 2
-        kernel = get_kernel();
+        kernel = getKernel();
     elseif nargin < 3
-        kernel = get_kernel(filter);
+        kernel = getKernel(filter);
     else
-        kernel = get_kernel(filter, k);
+        kernel = getKernel(filter, k);
     end
 
     img = im2double(img);
@@ -79,7 +79,7 @@ function [imgout] = pyramid_reduce(img, filter, k)
 end
 
 
-function [kernel] = get_kernel(filter, k)
+function [kernel] = getKernel(filter, k)
 % Select kernel.
 % Numerical filters are from table 3.4 p149 of Computer Vision: Algorithms and Applications from Szeliski R., 2010
 % filter - optional. Name of the filter to use. Use name 'gaussian' (default), 'binomial', 'cubic', 'windowed-sinc', 'QMF-9' or 'JPEG2000'
@@ -95,8 +95,8 @@ function [kernel] = get_kernel(filter, k)
         if nargin < 2
             k = -1;
         end
-        ker1d = [cubic_filter(1.5, k) cubic_filter(1, k) cubic_filter(0.5, k) cubic_filter(0, k) ...
-                 cubic_filter(0.5, k) cubic_filter(1, k) cubic_filter(1.5, k)];
+        ker1d = [cubicFilter(1.5, k) cubicFilter(1, k) cubicFilter(0.5, k) cubicFilter(0, k) ...
+                 cubicFilter(0.5, k) cubicFilter(1, k) cubicFilter(1.5, k)];
     elseif strcmp(filter, 'windowed-sinc') || strcmp(filter, 'windowed sinc')
         ker1d = [0 -0.0153 0 0.2684 0.4939 0.2684 0 -0.0153 0];
     elseif strcmp(filter, 'QMF-9')

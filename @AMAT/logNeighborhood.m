@@ -1,11 +1,11 @@
-function logNeighborhood(mat, level, xc, yc)
+function logNeighborhood(mat, xc, yc)
     f = fopen(strcat(mat.progFilename, '_log.csv'), 'a');
     fprintf(f,'%d,%s\n', ...
-        nnz(level.covered), strjoin(getNeighborhoodValues(mat, level, xc, yc), ','));
+        nnz(mat.covered), strjoin(getNeighborhoodValues(mat, xc, yc), ','));
     fclose(f);
 end
 
-function neighbor = getNeighborhoodValues(mat, level, xc, yc)
+function neighbor = getNeighborhoodValues(mat, xc, yc)
     k = 2;
     center = k + 4;
     neighbor = strings(9);
@@ -20,13 +20,12 @@ function neighbor = getNeighborhoodValues(mat, level, xc, yc)
                 k = k + 1;
             end
             try
-                [minCost, r] = min(level.diskCostEffective(col, row, :));
-                lesser_count = sum(level.diskCostEffective(:) < minCost);
-                equal_count = sum(level.diskCostEffective(:) == minCost);
-                greater_count = sum(level.diskCostEffective(:) > minCost);
-                max_count = sum(level.diskCostEffective(:) == mat.BIG);
-                neighbor(index) = sprintf('%d,%d,%d,%60.60f,%d,%d,%d,%d', ...
-                    row, col, r, minCost, lesser_count, equal_count, greater_count, max_count);
+                [minCost, r] = min(mat.diskCostEffective(col, row, :));
+                lesser_count = sum(mat.diskCostEffective(:) < minCost);
+                equal_count = sum(mat.diskCostEffective(:) == minCost);
+                greater_count = sum(mat.diskCostEffective(:) > minCost);
+                max_count = sum(mat.diskCostEffective(:) == mat.BIG);
+                neighbor(index) = sprintf('%d,%d,%d,%60.60f,%d,%d,%d,%d', row, col, r, minCost, lesser_count, equal_count, greater_count, max_count);
             catch
                 % possibly out of bounds
                 k = k - 1;

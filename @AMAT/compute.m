@@ -6,9 +6,13 @@ function mat = compute(mat)
         imgs = {mat.input};
     end
     mat.setLevelParams(imgs);
-    for i = 1:size(mat.levels)
-        mat.setCover(i);
+    for i = 1:size(mat.levels, 2)
+        mat.levels{i}.setCover();
+        profile off;
+        mat.levels{i}.showImg();
+        profile on;
     end
     profile off;
     profile viewer;
+    mat.showImg();
 end

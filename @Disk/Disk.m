@@ -6,8 +6,8 @@ classdef Disk < handle
     end
 
     methods
-        costs = computeCosts(ds, mat, levelIndex);
-        enc = computeEncodings(ds, level, inputlab);
+        costs = computeCosts(ds, mat);
+        enc = computeEncodings(ds, mat, inputlab);
 
         function ds = Disk()
         end

@@ -5,17 +5,16 @@ function costs = computeSquareCosts(sq, mat)
     squareIndex = min(2, size(mat.encoding, 5));
     enc = mat.encoding(:, :, :, :, squareIndex);
     enc2 = enc .^ 2;
-    [numRows, numCols, numChannels, numScales] = size(enc);
-    sfilt = cell(1, numScales); sfilt{1} = Square.get(mat.scales(1) - 1);
-    for r = 2:numScales, sfilt{r} = Square.get(mat.scales(r - 1)); end
+    sfilt = cell(1, mat.numScales); sfilt{1} = Square.get(mat.scales(1) - 1);
+    for r = 2:mat.numScales, sfilt{r} = Square.get(mat.scales(r - 1)); end
     nnzcs= cumsum(cellfun(@nnz, sfilt)); % cumsum of square areas
 
     % Compute costs for axis-aligned squares
-    costs = zeros(numRows, numCols, numChannels, numScales);
-    for c = 1:numChannels
-        for r = 1:numScales
-            sumMri = zeros(numRows, numCols);
-            sumMri2 = zeros(numRows, numCols);
+    costs = zeros(mat.numRows, mat.numCols, mat.numChannels, mat.numScales);
+    for c = 1:mat.numChannels
+        for r = 1:mat.numScales
+            sumMri = zeros(mat.numRows, mat.numCols);
+            sumMri2 = zeros(mat.numRows, mat.numCols);
             for i = 1:r
                 % Squares are separable so we can speed-up conv
                 fones = sfilt{r - i + 1}(1, :);
@@ -27,7 +26,7 @@ function costs = computeSquareCosts(sq, mat)
     end
 
     % Same postprocesssing as computeDiskCosts
-    for r = 1:numScales
+    for r = 1:mat.numScales
         scale = mat.scales(r);
         costs([1:scale, end - scale + 1:end], :, :, r, :) = mat.BIG;
         costs(:, [1:scale, end - scale + 1:end], :, r, :) = mat.BIG;
@@ -39,7 +38,7 @@ function costs = computeSquareCosts(sq, mat)
         encrot = enc(:, :, :, :, end - O + 1:end);
         enc2rot = enc2(:, :, :, :, end - O + 1:end);
         squareRotCost = computeRotatedSquareCosts(mat, encrot, enc2rot);
-        for r = 1:numScales
+        for r = 1:mat.numScales
             scalerot = ceil(sqrt(2) * mat.scales(r)); % square "radius"
             squareRotCost([1:scalerot, end - scalerot + 1:end], :, :, r, :) = mat.BIG;
             squareRotCost(:, [1:scalerot, end - scalerot + 1:end], :, r, :) = mat.BIG;
@@ -51,7 +50,7 @@ function costs = computeSquareCosts(sq, mat)
     costs = max(0, costs);
 
     % Combine costs from different channels
-    if numChannels > 1
+    if mat.numChannels > 1
         wc = [0.5, 0.25, 0.25]; % weights for luminance and color channels
         costs = costs(:, :, 1, :, :) * wc(1) + ...
                         costs(:, :, 2, :, :) * wc(2) + ...
@@ -70,19 +69,17 @@ function squareRotCost = computeRotatedSquareCosts(mat, enc, enc2)
     encic = padarray(encic, [pad pad], 'replicate', 'post');
     enc2ic = padarray(enc2ic, [pad pad], 0, 'pre');
     enc2ic = padarray(enc2ic, [pad pad], 'replicate', 'post');
-    [numRows, numCols, numChannels] = size(encic);
-    numScales = numel(mat.scales);
     O = numel(mat.thetas);
 
     % Rotated square filters and integral filters
-    sfilt = cell(1, numScales);
-    rotfilt = cell(O, numScales);
-    pfilt = cell(O, numScales);
+    sfilt = cell(1, mat.numScales);
+    rotfilt = cell(O, mat.numScales);
+    pfilt = cell(O, mat.numScales);
     sfilt{1} = Square.get(mat.scales(1) - 1);
-    for r = 2:numScales
+    for r = 2:mat.numScales
         sfilt{r} = Square.get(mat.scales(r - 1));
     end
-    for r = 1:numScales
+    for r = 1:mat.numScales
         for o = 1:O
             rotfilt{o, r} = imrotate(sfilt, mat.thetas(o));
             % Make sure that the border has a zero-border
@@ -97,12 +94,12 @@ function squareRotCost = computeRotatedSquareCosts(mat, enc, enc2)
     nnzcs = cumsum(cellfun(@nnz, rotfilt), 2);
 
     % Compute heuristic costs for rotated square filters
-    squareRotCost = zeros(numRows, numCols, numChannels, numScales, O);
+    squareRotCost = zeros(mat.numRows, mat.numCols, mat.numChannels, mat.numScales, O);
     for o = 1:O
-        for c = 1:numChannels
-            for r = 1:numScales
-                sumMri = zeros(numRows, numCols);
-                sumMri2 = zeros(numRows, numCols);
+        for c = 1:mat.numChannels
+            for r = 1:mat.numScales
+                sumMri = zeros(mat.numRows, mat.numCols);
+                sumMri2 = zeros(mat.numRows, mat.numCols);
                 for i = 1:r
                     sumMri = sumMri + filter2(pfilt{o, r - i + 1}, encic(:, :, c, i));
                     sumMri2 = sumMri2 + filter2(pfilt{o, r - i + 1}, enc2ic(:, :, c, i));
