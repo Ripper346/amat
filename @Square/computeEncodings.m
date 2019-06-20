@@ -1,13 +1,10 @@
 function enc = computeSquareEncodings(sq, mat, inputlab)
-    [numRows, numCols, numChannels] = size(mat.input);
-    numScales = numel(mat.scales);
-
     % Since square filters are separable, using filter2 + full
     % filters is more efficient than using integral images.
     squareIndex = min(2, size(mat.filters, 1));
-    enc = zeros(numRows, numCols, numChannels, numScales);
-    for c = 1:numChannels
-        for r = 1:numScales
+    enc = zeros(mat.numRows, mat.numCols, mat.numChannels, mat.numScales);
+    for c = 1:mat.numChannels
+        for r = 1:mat.numScales
             sep = mat.filters{squareIndex, r}(1, :);
             enc(:, :, c, r) = conv2(sep, sep', inputlab(:, :, c), 'same');
         end

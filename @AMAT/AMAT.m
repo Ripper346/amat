@@ -12,7 +12,7 @@ classdef AMAT < handle
         branches
         cost
         depth
-        encoding
+        encoding = {}
         filters
         info
         input
@@ -23,6 +23,15 @@ classdef AMAT < handle
         shapeId
         thetas  % in degrees
         BIG = 1e60
+        img
+        result
+        numScales
+        numRows
+        numCols
+        numChannels
+        levels
+        covered
+        diskCostEffective
     end
 
     properties(Transient)
@@ -33,43 +42,55 @@ classdef AMAT < handle
         gif
         logProgress
         progFilename
-        covered
         diskCost
         diskCostPerPixel
-        diskCostEffective
         numNewPixelsCovered
+        usePyramid
+        pyramidOpts
+        x
+        y
+        isLevel = 0
+        %levels
+        nextMinCost
+        nextIdxMinCost
     end
 
     methods
-        initialize(mat, img, varargin);
-        mat = group(mat, marginFactor, colortol);
-        mat = simplify(mat, method, param);
+        calculateDiskCosts(mat);
         mat = compute(mat);
+        depth = computeDepth(mat, rad);
         rec = computeReconstruction(mat);
         seg = computeSegmentation(mat, minCoverage, minSegment);
-        depth = computeDepth(mat, rad);
-        setCover(mat);
-        update(mat, minCost, areaCovered, xc, yc, rc, newPixelsCovered, numRows, numCols, numScales);
-        showImg(mat, xc, yc, rc, numRows, numCols, numScales);
+        convertSmallerCover(mat, smallerLevel);
         exportGif(mat, filename);
+        pyramid = generatePyramid(mat, img, minSize, filter, k);
+        area = getPointsCovered(mat, xc, yc, rc)
+        mat = group(mat, marginFactor, colortol);
+        initialize(mat, img, varargin);
         logNeighborhood(mat, xc, yc);
+        setCover(mat, nextLevel);
+        setCoverParams(mat, img, scales);
+        showImg(mat, xc, yc, rc);
+        mat = simplify(mat, method, param);
+        update(mat, minCost, areaCovered, xc, yc, rc, newPixelsCovered, nextLevel);
 
-        costs = computeDiskCosts(mat);
-        enc = computeDiskEncodings(mat, inputlab);
-
-        costs = computeSquareCosts(mat);
-        enc = computeSquareEncodings(mat, inputlab);
-
-        function mat = AMAT(img, varargin)
+        function mat = AMAT(origin, varargin)
             if nargin > 0
                 % Optionally copy from input AMAT object
-                if isa(img, 'AMAT')
-                    mat = img.clone();
-                    img = mat.input;
+                if isa(origin, 'AMAT')
+                    mat.ws = origin.ws;
+                    mat.shape = origin.shape;
+                    mat.thetas = origin.thetas;
+                    mat.vistop = origin.vistop;
+                    mat.scaleIdx = origin.scaleIdx;
+                    mat.isLevel = 1;
+                    mat.logProgress = origin.logProgress
+                    mat.gif = origin.gif
+                else
+                    assert(ismatrix(origin) || size(origin, 3) == 3, 'Input image must be 2D or 3D array')
+                    mat.initialize(origin, varargin{:});
+                    mat.compute();
                 end
-                assert(ismatrix(img) || size(img, 3) == 3, 'Input image must be 2D or 3D array')
-                mat.initialize(img, varargin{:});
-                mat.compute();
             end
         end
 
@@ -92,6 +113,10 @@ classdef AMAT < handle
         end
 
     end % end of public methods
+
+    methods (Access=private)
+        initializeFigure(mat, forced);
+    end
 
     methods (Static)
         function c = circle(r)
