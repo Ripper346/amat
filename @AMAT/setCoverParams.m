@@ -6,7 +6,8 @@ function setCoverParams(mat, img, scales)
     [mat.numRows, mat.numCols, mat.numChannels] = size(mat.img);
     [mat.x, mat.y] = meshgrid(1:mat.numCols, 1:mat.numRows);
     mat.encoding = computeEncodings(mat);
-    mat.cost = computeCosts(mat);
+    mat.calculateDiskCosts();
+    initializeCoveredMatrix(mat);
 end
 
 function encoding = computeEncodings(mat)
@@ -17,18 +18,6 @@ function encoding = computeEncodings(mat)
         encoding = cat(5, encd, encs);
     elseif mat.shape ~= NaN
         encoding = mat.shape.computeEncodings(mat, inputlab);
-    else
-        error('Invalid shape');
-    end
-end
-
-function cost = computeCosts(mat)
-    if isa(mat.shape, 'cell')
-        dcost = mat.shape{1}.computeCosts(mat);
-        scost = mat.shape{2}.computeCosts(mat);
-        cost = cat(4, dcost, scost);
-    elseif mat.shape ~= NaN
-        cost = mat.shape.computeCosts(mat);
     else
         error('Invalid shape');
     end
@@ -51,5 +40,15 @@ function filters = initializeFilters(mat)
         for i = 1:numScales
             filters{k + d, i} = Square.get(mat.scales(i), mat.thetas(d));
         end
+    end
+end
+
+function initializeCoveredMatrix(mat)
+    mat.covered = false(mat.numRows, mat.numCols);
+    % Flag border pixels that cannot be accessed by filters
+    if isa(mat.shape, 'Disk')
+        r = mat.scales(1);
+        mat.covered([1:r, end - r + 1:end], [1, end]) = true;
+        mat.covered([1, end], [1:r, end - r + 1:end]) = true;
     end
 end

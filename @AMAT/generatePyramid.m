@@ -21,9 +21,9 @@ function [pyramid] = generatePyramid(mat, img, minSize, filter, k)
     % parse kernel to use
     if exist('filter', 'var') == 1 && strcmp(filter, 'kernel')
         kernel = k;
-    elseif nargin < 3
-        kernel = getKernel();
     elseif nargin < 4
+        kernel = getKernel();
+    elseif nargin < 5
         kernel = getKernel(filter);
     else
         kernel = getKernel(filter, k);
@@ -85,6 +85,7 @@ function [kernel] = getKernel(filter, k)
 % filter - optional. Name of the filter to use. Use name 'gaussian' (default), 'binomial', 'cubic', 'windowed-sinc', 'QMF-9' or 'JPEG2000'
 % k - optioal. Costant to use in gaussian (default 0.375) and cubic (default -1) filters
 
+    % TODO insert matlab standard pyramid method in the options
     kernel = [];
     if nargin < 1 || strcmp(filter, 'gaussian') || strcmp(filter, 'binomial')
         if nargin < 2

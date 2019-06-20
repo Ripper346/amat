@@ -29,6 +29,9 @@ classdef AMAT < handle
         numRows
         numCols
         numChannels
+        levels
+        covered
+        diskCostEffective
     end
 
     properties(Transient)
@@ -39,38 +42,37 @@ classdef AMAT < handle
         gif
         logProgress
         progFilename
-        covered
         diskCost
         diskCostPerPixel
-        diskCostEffective
         numNewPixelsCovered
         usePyramid
         pyramidOpts
         x
         y
-        levels
+        isLevel = 0
+        %levels
+        nextMinCost
+        nextIdxMinCost
     end
 
     methods
-        initialize(mat, img, varargin);
-        mat = group(mat, marginFactor, colortol);
-        mat = simplify(mat, method, param);
+        calculateDiskCosts(mat);
         mat = compute(mat);
+        depth = computeDepth(mat, rad);
         rec = computeReconstruction(mat);
         seg = computeSegmentation(mat, minCoverage, minSegment);
-        depth = computeDepth(mat, rad);
-        setCover(mat);
-        update(mat, minCost, areaCovered, xc, yc, rc, newPixelsCovered);
-        showImg(mat, xc, yc, rc);
+        convertSmallerCover(mat, smallerLevel);
         exportGif(mat, filename);
-        logNeighborhood(mat, xc, yc);
         pyramid = generatePyramid(mat, img, minSize, filter, k);
-
-        costs = computeDiskCosts(mat);
-        enc = computeDiskEncodings(mat, inputlab);
-
-        costs = computeSquareCosts(mat);
-        enc = computeSquareEncodings(mat, inputlab);
+        area = getPointsCovered(mat, xc, yc, rc)
+        mat = group(mat, marginFactor, colortol);
+        initialize(mat, img, varargin);
+        logNeighborhood(mat, xc, yc);
+        setCover(mat, nextLevel);
+        setCoverParams(mat, img, scales);
+        showImg(mat, xc, yc, rc);
+        mat = simplify(mat, method, param);
+        update(mat, minCost, areaCovered, xc, yc, rc, newPixelsCovered, nextLevel);
 
         function mat = AMAT(origin, varargin)
             if nargin > 0
@@ -81,6 +83,9 @@ classdef AMAT < handle
                     mat.thetas = origin.thetas;
                     mat.vistop = origin.vistop;
                     mat.scaleIdx = origin.scaleIdx;
+                    mat.isLevel = 1;
+                    mat.logProgress = origin.logProgress
+                    mat.gif = origin.gif
                 else
                     assert(ismatrix(origin) || size(origin, 3) == 3, 'Input image must be 2D or 3D array')
                     mat.initialize(origin, varargin{:});
