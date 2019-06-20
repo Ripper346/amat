@@ -38,6 +38,8 @@ classdef AMAT < handle
     end
 
     properties(Access=private)
+        topNeighSelection
+        followNeighbors
         fig
         gif
         logProgress
@@ -62,6 +64,7 @@ classdef AMAT < handle
         rec = computeReconstruction(mat);
         seg = computeSegmentation(mat, minCoverage, minSegment);
         convertSmallerCover(mat, smallerLevel);
+        [minCost, idxMinCost, yMin, xMin, rMin] = coverNeighbors(mat, xc, yc, x, y, pathNum, numRows, numCols, numScales);
         exportGif(mat, filename);
         pyramid = generatePyramid(mat, img, minSize, filter, k);
         area = getPointsCovered(mat, xc, yc, rc)

@@ -41,8 +41,13 @@ function setCover(mat, nextLevel)
     while ~all(mat.covered(:))
         jumpLoop = false;
         % Get disk with min cost
-        [minCost, idxMinCost] = min(mat.diskCostEffective(:));
-        [yc, xc, rc] = ind2sub(size(mat.diskCostEffective), idxMinCost);
+        if mat.followNeighbors <= 1
+            [minCost, idxMinCost] = min(mat.diskCostEffective(:));
+            [yc, xc, rc] = ind2sub(size(mat.diskCostEffective), idxMinCost);
+            if mat.followNeighbors == 1
+                mat.followNeighbors = 2
+            end
+        end
         if prepareNextLevel
             minSamePointNL = nextLevel.diskCostEffective((yc - 1) * 2 + 1:(yc - 1) * 2 + 2, (xc - 1) * 2 + 1:(xc - 1) * 2 + 2, :);
             if minCost > min(minSamePointNL(:)) %mat.nextMinCost
@@ -87,6 +92,9 @@ function setCover(mat, nextLevel)
         if ~isempty(printBreakPoints) && nnz(~mat.covered) < printBreakPoints(1)
             fprintf('%d...', printBreakPoints(1));
             printBreakPoints(1) = [];
+        end
+        if mat.followNeighbors > 0
+            [minCost, idxMinCost, yc, xc, rc] = mat.coverNeighbors(xc, yc, x, y, 0, numRows, numCols, numScales);
         end
     end
     fprintf('\n');

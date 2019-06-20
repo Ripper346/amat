@@ -5,7 +5,9 @@ function initialize(mat, img, varargin)
                 'shape', 'disk', ...
                 'thetas', [], ...
                 'gif', 0, ...
-                'log', 0, ...,
+                'log', 0, ...
+                'followNeighbors', 0, ...
+                'topNeighSelection', 15, ...
                 'pyramid', {}
                 };
     opts = parseVarargin(defaults, varargin);
@@ -20,6 +22,8 @@ function initialize(mat, img, varargin)
     mat.thetas = opts('thetas');
     mat.logProgress = opts('log');
     mat.gif = opts('gif');
+    mat.followNeighbors = opts('followNeighbors');
+    mat.topNeighSelection = opts('topNeighSelection');
     mat.usePyramid = 0;
     if isscalar(opts('pyramid'))
         mat.usePyramid = 1;
