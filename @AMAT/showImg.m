@@ -37,7 +37,7 @@ function showProgressSelectedDisk(mat, subplotIndex, xc, yc, rc)
     subplot(subplotIndex);
     imshow(reshape(mat.input, mat.numRows, mat.numCols, []));
     viscircles([xc, yc], rc, 'Color', 'k', 'EnhanceVisibility', false);
-    title(sprintf('Selected disk, radius: %d', rc));
+    title(sprintf('Selected disk, radius: %d', mat.scales(rc)));
 end
 
 function showProgressCovered(mat, subplotIndex, xc, yc, rc)
