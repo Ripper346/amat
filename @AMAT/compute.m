@@ -48,7 +48,7 @@ function scales = calculateLevelScales(originScale)
             scales{i} = 0;
         else
             % bottom pyramid level, we convert the original smallest radius to fit the size of level
-            if i == bottomLevel; smallestRadious = floor(min(originScale) / 2 ^ (i - 1)); else; smallestRadious = 2; end
+            if i == bottomLevel; smallestRadious = floor(min(originScale) / 2 ^ (i - 1)); else; smallestRadious = 3; end
             % top pyramid level, we convert the original biggest radius to fit the size of level
             if i == topLevel;    biggestRadious  = ceil(max(originScale) / 2 ^ (i - 1));  else; biggestRadious  = 4; end
             scales{i} = smallestRadious : biggestRadious;
