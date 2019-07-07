@@ -10,7 +10,6 @@ classdef AMAT < handle
         shape    = NaN
         axis
         branches
-        cost
         depth
         encoding = {}
         filters
@@ -32,6 +31,7 @@ classdef AMAT < handle
         levels
         covered
         diskCostEffective
+        prevLevelCovered
     end
 
     properties(Transient)
@@ -58,7 +58,8 @@ classdef AMAT < handle
     end
 
     methods
-        calculateDiskCosts(mat);
+        [numNewPixelsCovered, diskCost, diskCostPerPixel, diskCostEffective] = calculateDiskCosts(mat, scales, filters);
+        filters = initializeFilters(mat, scales);
         mat = compute(mat);
         depth = computeDepth(mat, rad);
         rec = computeReconstruction(mat);
@@ -87,8 +88,10 @@ classdef AMAT < handle
                     mat.vistop = origin.vistop;
                     mat.scaleIdx = origin.scaleIdx;
                     mat.isLevel = 1;
-                    mat.logProgress = origin.logProgress
-                    mat.gif = origin.gif
+                    mat.logProgress = origin.logProgress;
+                    mat.gif = origin.gif;
+                    mat.followNeighbors = origin.followNeighbors;
+                    mat.topNeighSelection = origin.topNeighSelection;
                 else
                     assert(ismatrix(origin) || size(origin, 3) == 3, 'Input image must be 2D or 3D array')
                     mat.initialize(origin, varargin{:});

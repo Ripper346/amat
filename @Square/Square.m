@@ -1,4 +1,4 @@
-classdef Square < handle    
+classdef Square < handle
     properties
     end
 
@@ -6,7 +6,7 @@ classdef Square < handle
     end
 
     methods
-        costs = computeCosts(sq, mat);
+        costs = computeCosts(sq, mat, scales);
         enc = computeEncodings(sq, mat, inputlab);
 
         function sq = Square()

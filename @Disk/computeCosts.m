@@ -1,4 +1,4 @@
-function costs = computeCosts(ds, mat)
+function costs = computeCosts(ds, mat, scales)
     % This function computes a heuristic that represents the
     % ability to reconstruct a disk-shaped part of the input image
     % using the mean RGB values computed over the same area.
@@ -24,20 +24,21 @@ function costs = computeCosts(ds, mat)
     % Precompute necessary quantitities. We use circular filters applied on
     % cumulative sums instead of disk filters, for efficiency.
     % Disk costs are always the first channel
+    numScales = numel(scales);
     enc = mat.encoding(:, :, :, :, 1);
     enc2 = enc .^ 2;
     enccsum = cumsum(enc, 4);
     enc2csum = cumsum(enc2, 4);
-    cfilt = cell(1, mat.numScales);
-    cfilt{1} = Disk.get(mat.scales(1) - 1);
-    for r = 2:mat.numScales
-        cfilt{r} = AMAT.circle(mat.scales(r - 1));
+    cfilt = cell(1, numScales);
+    cfilt{1} = Disk.get(scales(1) - 1);
+    for r = 2:numScales
+        cfilt{r} = AMAT.circle(scales(r - 1));
     end
     nnzcd = cumsum(cumsum(cellfun(@nnz, cfilt)));
 
-    costs = zeros(mat.numRows, mat.numCols, mat.numChannels, mat.numScales);
+    costs = zeros(mat.numRows, mat.numCols, mat.numChannels, numScales);
     for c = 1:mat.numChannels
-        for r = 1:mat.numScales
+        for r = 1:numScales
             sumMri = zeros(mat.numRows, mat.numCols);
             sumMri2 = zeros(mat.numRows, mat.numCols);
             for i = 1:r
@@ -53,8 +54,8 @@ function costs = computeCosts(ds, mat)
     % We do not use Inf to avoid complications in the greedy set cover
     % algorithm, caused by inf-inf subtractions and inf/inf divisions.
     % Also, keep in mind that max(0, NaN) = 0.
-    for r = 1:mat.numScales
-        scale = mat.scales(r);
+    for r = 1:numScales
+        scale = scales(r);
         costs([1:scale, end - scale + 1:end], :, :, r) = mat.BIG;
         costs(:, [1:scale, end - scale + 1:end], :, r) = mat.BIG;
     end
