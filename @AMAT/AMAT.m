@@ -58,7 +58,8 @@ classdef AMAT < handle
     end
 
     methods
-        [numNewPixelsCovered, diskCost, diskCostPerPixel, diskCostEffective] = calculateDiskCosts(mat, scales, filters);
+        [numNewPixelsCovered, diskCost, diskCostPerPixel, diskCostEffective] = calculateDiskCosts(mat, scales, filters, encoding);
+        enc = computeEncodings(ds, mat, inputlab, scales)
         filters = initializeFilters(mat, scales);
         mat = compute(mat);
         depth = computeDepth(mat, rad);

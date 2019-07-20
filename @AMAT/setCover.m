@@ -45,16 +45,20 @@ function setCover(mat, nextLevel)
             [minCost, idxMinCost] = min(mat.diskCostEffective(:));
             [yc, xc, rc] = ind2sub(size(mat.diskCostEffective), idxMinCost);
             if mat.followNeighbors == 1
-                mat.followNeighbors = 2
+                mat.followNeighbors = 2;
             end
         end
+        % if minCost == mat.BIG
+        %     warning('All pixels cycled.');
+        %     break;
+        % end
         if prepareNextLevel
             minSamePointNL = nextLevel.diskCostEffective((yc - 1) * 2 + 1:(yc - 1) * 2 + 2, (xc - 1) * 2 + 1:(xc - 1) * 2 + 2, :);
-            if minCost > min(minSamePointNL(:)) %mat.nextMinCost
-                mat.diskCost(yc, xc, :) = mat.BIG;
-                mat.diskCostEffective(yc, xc, :) = mat.BIG;
-                jumpLoop = true;
-            end
+            %if minCost > min(minSamePointNL(:)) %mat.nextMinCost
+            %    mat.diskCost(yc, xc, :) = mat.BIG;
+            %    mat.diskCostEffective(yc, xc, :) = mat.BIG;
+            %    jumpLoop = true;
+            %end
         end
 
         if isinf(minCost)
@@ -65,8 +69,22 @@ function setCover(mat, nextLevel)
         areaCovered = mat.getPointsCovered(xc, yc, mat.scales(rc));
         newPixelsCovered = areaCovered & ~mat.covered;
         if ~any(newPixelsCovered(:))
-            warning('Stopping: selected disk covers zero (0) new pixels.');
-            break;
+            %%% BLOCKING
+%             if mat.prevLevelCovered
+%                 [coveredCount, ~] = hist(mat.prevLevelCovered(:) + areaCovered(:), [0, 1, 2]);
+%                 [currentCoveredCount, ~] = hist(areaCovered(:), [0, 1]);
+%                 if coveredCount(2) - currentCoveredCount(1) == 0
+%                     jumpLoop = true;
+%                     mat.diskCost(yc, xc, :) = mat.BIG;
+%                     mat.diskCostEffective(yc, xc, :) = mat.BIG;
+%                 else
+%                     warning('Stopping: selected disk covers zero (0) new pixels.');
+%                     break;
+%                 end
+            %else
+                warning('Stopping: selected disk covers zero (0) new pixels.');
+                break;
+            %end
         end
 
 

@@ -5,10 +5,10 @@ function filters = initializeFilters(mat, scales)
     if isa(mat.shape, 'cell')
         filters = cell(numel(mat.shape));
         for sh = 1:numel(mat.shape)
-            filters{sh} = mat.shape(sh).getFilters(mat, numel(scales));
+            filters{sh} = mat.shape(sh).getFilters(scales, numel(scales));
         end
     elseif mat.shape ~= NaN
-        filters = mat.shape.getFilters(mat, numel(scales));
+        filters = mat.shape.getFilters(scales, numel(scales));
     else
         error('Invalid filter shape');
     end

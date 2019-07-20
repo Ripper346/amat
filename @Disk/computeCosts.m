@@ -1,4 +1,4 @@
-function costs = computeCosts(ds, mat, scales)
+function costs = computeCosts(ds, mat, scales, encoding)
     % This function computes a heuristic that represents the
     % ability to reconstruct a disk-shaped part of the input image
     % using the mean RGB values computed over the same area.
@@ -24,8 +24,14 @@ function costs = computeCosts(ds, mat, scales)
     % Precompute necessary quantitities. We use circular filters applied on
     % cumulative sums instead of disk filters, for efficiency.
     % Disk costs are always the first channel
+    if nargin < 3
+        encoding = mat.encoding;
+        if nargin < 2
+            scales = mat.scales;
+        end
+    end
     numScales = numel(scales);
-    enc = mat.encoding(:, :, :, :, 1);
+    enc = encoding(:, :, :, :, 1);
     enc2 = enc .^ 2;
     enccsum = cumsum(enc, 4);
     enc2csum = cumsum(enc2, 4);

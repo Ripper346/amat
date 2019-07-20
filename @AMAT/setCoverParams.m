@@ -5,22 +5,9 @@ function setCoverParams(mat, img, scales)
     mat.filters = initializeFilters(mat);
     [mat.numRows, mat.numCols, mat.numChannels] = size(mat.img);
     [mat.x, mat.y] = meshgrid(1:mat.numCols, 1:mat.numRows);
-    mat.encoding = computeEncodings(mat);
+    mat.encoding = mat.computeEncodings();
     [mat.numNewPixelsCovered, mat.diskCost, mat.diskCostPerPixel, mat.diskCostEffective] = mat.calculateDiskCosts();
     initializeCoveredMatrix(mat);
-end
-
-function encoding = computeEncodings(mat)
-    inputlab = rgb2labNormalized(mat.img);
-    if isa(mat.shape, 'cell')
-        encd = mat.shape{1}.computeEncodings(mat, inputlab);
-        encs = mat.shape{2}.computeEncodings(mat, inputlab);
-        encoding = cat(5, encd, encs);
-    elseif mat.shape ~= NaN
-        encoding = mat.shape.computeEncodings(mat, inputlab);
-    else
-        error('Invalid shape');
-    end
 end
 
 function initializeCoveredMatrix(mat)
