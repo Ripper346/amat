@@ -2,7 +2,7 @@ function setCoverParams(mat, img, scales)
     mat.img = img;
     mat.scales = scales;
     mat.numScales = numel(mat.scales);
-    mat.filters = initializeFilters(mat);
+    mat.filters = mat.initializeFilters();
     [mat.numRows, mat.numCols, mat.numChannels] = size(mat.img);
     [mat.x, mat.y] = meshgrid(1:mat.numCols, 1:mat.numRows);
     mat.encoding = mat.computeEncodings();

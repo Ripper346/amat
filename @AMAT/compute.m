@@ -22,11 +22,21 @@ function mat = compute(mat)
         mat.levels{i}.showImg();
         profile resume;
     end
-    calculateDepth(mat);
+    setMainAttributes(mat);
     mat.computeReconstruction();
     profile off;
     profile viewer;
     mat.showImg();
+end
+
+function setMainAttributes(mat)
+    [mat.numRows, mat.numCols, mat.numChannels] = size(mat.input);
+    mat.filters = mat.initializeFilters();
+    [mat.x, mat.y] = meshgrid(1:mat.numCols, 1:mat.numRows);
+    mat.radius = mat.levels{1}.radius;
+    mat.axis = mat.levels{1}.axis;
+    mat.input = reshape(mat.input, mat.numRows, mat.numCols, mat.numChannels);
+    calculateDepth(mat);
 end
 
 function setLevelParams(mat, imgs, scales)
