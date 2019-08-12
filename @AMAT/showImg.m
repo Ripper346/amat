@@ -21,6 +21,7 @@ function showFinal(mat)
     subplot(222); imshow(mat.radius, []);     title('Radii');
     subplot(223); imshow(mat.input);          title('Original image');
     subplot(224); imshow(mat.reconstruction); title('Reconstructed image');
+    drawnow;
 end
 
 function showProgress(mat, xc, yc, rc)

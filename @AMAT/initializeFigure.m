@@ -6,6 +6,7 @@ function initializeFigure(mat, forced)
             name = 'Results';
         end
         mat.fig = figure('Name', name, 'rend', 'painters', 'pos', [10 10 900 600]);
+        drawnow;
         mat.progFilename = strcat('progress_', datestr(datetime, 'yyyy-mm-dd_HH.MM.SS'));
     end
 end

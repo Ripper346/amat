@@ -52,14 +52,14 @@ function setCover(mat, nextLevel)
         %     warning('All pixels cycled.');
         %     break;
         % end
-        if prepareNextLevel
-            minSamePointNL = nextLevel.diskCostEffective((yc - 1) * 2 + 1:(yc - 1) * 2 + 2, (xc - 1) * 2 + 1:(xc - 1) * 2 + 2, :);
+        % if prepareNextLevel
+        %     minSamePointNL = nextLevel.diskCostEffective((yc - 1) * 2 + 1:(yc - 1) * 2 + 2, (xc - 1) * 2 + 1:(xc - 1) * 2 + 2, :);
             %if minCost > min(minSamePointNL(:)) %mat.nextMinCost
             %    mat.diskCost(yc, xc, :) = mat.BIG;
             %    mat.diskCostEffective(yc, xc, :) = mat.BIG;
             %    jumpLoop = true;
             %end
-        end
+        % end
 
         if isinf(minCost)
             warning('Stopping: selected disk has infinite cost.');
@@ -95,9 +95,9 @@ function setCover(mat, nextLevel)
             continue;
         end
         if prepareNextLevel
-            mat.update(minCost, areaCovered, xc, yc, rc, newPixelsCovered, nextLevel);
+            mat.update(minCost, xc, yc, rc, newPixelsCovered, nextLevel);
         else
-            mat.update(minCost, areaCovered, xc, yc, rc, newPixelsCovered);
+            mat.update(minCost, xc, yc, rc, newPixelsCovered);
         end
         if mat.logProgress
             mat.logNeighborhood(xc, yc);
@@ -117,5 +117,5 @@ function setCover(mat, nextLevel)
     end
     fprintf('\n');
     mat.input = reshape(mat.input, mat.numRows, mat.numCols, mat.numChannels);
-    mat.axis = labNormalized2rgb(mat.axis);
+    % mat.axis = labNormalized2rgb(mat.axis);
 end
