@@ -32,6 +32,9 @@ classdef AMAT < handle
         covered
         diskCostEffective
         prevLevelCovered
+        convolutions
+        convIdxMap
+        incrIdxMap
     end
 
     properties(Transient)
@@ -77,9 +80,10 @@ classdef AMAT < handle
         setCoverParams(mat, img, scales);
         showImg(mat, xc, yc, rc);
         mat = simplify(mat, method, param);
-        update(mat, minCost, areaCovered, xc, yc, rc, newPixelsCovered, nextLevel);
+        update(mat, minCost, xc, yc, rc, newPixelsCovered, nextLevel);
 
         function mat = AMAT(origin, varargin)
+            mat.convolutions = containers.Map('KeyType', 'char', 'ValueType', 'any');
             if nargin > 0
                 % Optionally copy from input AMAT object
                 if isa(origin, 'AMAT')
@@ -93,6 +97,8 @@ classdef AMAT < handle
                     mat.gif = origin.gif;
                     mat.followNeighbors = origin.followNeighbors;
                     mat.topNeighSelection = origin.topNeighSelection;
+                    mat.convIdxMap = origin.convIdxMap;
+                    mat.incrIdxMap = origin.incrIdxMap;
                 else
                     assert(ismatrix(origin) || size(origin, 3) == 3, 'Input image must be 2D or 3D array')
                     mat.initialize(origin, varargin{:});
@@ -130,6 +136,10 @@ classdef AMAT < handle
             r = double(r); % make sure r can take negative values
             [x, y] = meshgrid(-r:r, -r:r);
             c = double((x .^ 2 + y .^ 2 <= r ^ 2) & (x .^ 2 + y .^ 2 > (r - 1) ^ 2));
+        end
+
+        function res = cantor(x, y)
+            res = (x + y) * (x + y + 1) / 2 + y;
         end
     end
 end

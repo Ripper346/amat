@@ -1,12 +1,12 @@
-function update(mat, minCost, areaCovered, xc, yc, rc, newPixelsCovered, nextLevel)
+function update(mat, minCost, xc, yc, rc, newPixelsCovered, nextLevel)
     mat.covered(newPixelsCovered) = true;
     mat.price(newPixelsCovered) = minCost / mat.numNewPixelsCovered(yc, xc, rc);
     mat.axis(yc, xc, :) = mat.encoding(yc, xc, :, rc);
     mat.radius(yc, xc) = mat.scales(rc);
     updateCosts(mat, xc, yc, newPixelsCovered);
-    if nargin > 7
-        updateNextLevel(mat, nextLevel, xc, yc, rc);
-    end
+    % if nargin > 7
+    %     updateNextLevel(mat, nextLevel, xc, yc, rc);
+    % end
 end
 
 function updateCosts(mat, xc, yc, newPixelsCovered)
@@ -16,6 +16,7 @@ function updateCosts(mat, xc, yc, newPixelsCovered)
     yminCovered = min(yy);
     ymaxCovered = max(yy);
     newPixelsCovered = double(newPixelsCovered);
+    % file = fopen('conv2.csv', 'a');
     for r = 1:mat.numScales
         scale = mat.scales(r);
         x1 = max(xminCovered - scale, 1);
@@ -23,19 +24,29 @@ function updateCosts(mat, xc, yc, newPixelsCovered)
         x2 = min(xmaxCovered + scale, mat.numCols);
         y2 = min(ymaxCovered + scale, mat.numRows);
         % Find how many of the newPixelsCovered are covered by other disks.
-        numPixelsSubtracted = conv2(newPixelsCovered(y1:y2, x1:x2), mat.filters{r}, 'same');
+        elems = mat.convIdxMap(1:y2 - y1 + 1, 1:x2 - x1 + 1) .* newPixelsCovered(y1:y2, x1:x2);
+        newPixelsCoveredStr = sprintf("%d$%d$%d$%d$%d$%d", uint64(sum(elems, 'all')), ...
+                uint64(sum(mat.incrIdxMap(1:y2 - y1 + 1, 1:x2 - x1 + 1) .* newPixelsCovered(y1:y2, x1:x2), 'all')), ... %var(elems(:), 'omitnan'), ...
+                nnz(elems), y2 - y1 + 1, x2 - x1 + 1, r);
+        if ~isKey(mat.convolutions, newPixelsCoveredStr)
+            mat.convolutions(newPixelsCoveredStr) = conv2(newPixelsCovered(y1:y2, x1:x2), mat.filters{r}, 'same');
+        end
+        % numPixelsSubtracted = conv2(newPixelsCovered(y1:y2, x1:x2), mat.filters{r}, 'same');
+        % fprintf(file,'%d,%d,%d,%s,,', r, x2-x1, y2-y1, newPixelsCoveredStr);
         % and subtract the respective counts from those disks.
-        mat.numNewPixelsCovered(y1:y2, x1:x2, r) = mat.numNewPixelsCovered(y1:y2, x1:x2, r) - numPixelsSubtracted;
+        mat.numNewPixelsCovered(y1:y2, x1:x2, r) = mat.numNewPixelsCovered(y1:y2, x1:x2, r) - mat.convolutions(newPixelsCoveredStr);
         % update diskCost, diskCostPerPixel, and diskCostEfficiency *only* for
         % the locations that have been affected, for efficiency.
         mat.diskCost(y1:y2, x1:x2, r) = mat.diskCost(y1:y2, x1:x2, r) - ...
-            numPixelsSubtracted .* mat.diskCostPerPixel(y1:y2, x1:x2, r);
+            mat.convolutions(newPixelsCoveredStr) .* mat.diskCostPerPixel(y1:y2, x1:x2, r);
         mat.diskCostPerPixel(y1:y2, x1:x2, r) = mat.diskCost(y1:y2, x1:x2, r) ./ ...
             max(eps, mat.numNewPixelsCovered(y1:y2, x1:x2, r)) + ... % avoid 0/0
             mat.BIG * (mat.numNewPixelsCovered(y1:y2, x1:x2, r) == 0); % x/0 = inf
         mat.diskCostEffective(y1:y2, x1:x2, r) = ...
             mat.diskCostPerPixel(y1:y2, x1:x2, r) + mat.ws / mat.scales(r);
     end
+    % fprintf(file,'\n');
+    % fclose(file);
     % Make sure disk with the same center is not selected again
     mat.diskCost(yc, xc, :) = mat.BIG;
     mat.diskCostEffective(yc, xc, :) = mat.BIG;

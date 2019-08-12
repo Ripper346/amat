@@ -1,5 +1,8 @@
 function mat = compute(mat)
     profile on;
+    fclose(fopen('conv2.csv', 'w'));
+    [mat.numRows, mat.numCols, mat.numChannels] = size(mat.input);
+    computeConvolutionIdxMap(mat);
     if mat.usePyramid
         % generate image pyramid
         scales = calculateLevelScales(mat.scales);
@@ -30,7 +33,6 @@ function mat = compute(mat)
 end
 
 function setMainAttributes(mat)
-    [mat.numRows, mat.numCols, mat.numChannels] = size(mat.input);
     mat.filters = mat.initializeFilters();
     [mat.x, mat.y] = meshgrid(1:mat.numCols, 1:mat.numRows);
     mat.radius = mat.levels{1}.radius;
@@ -77,4 +79,15 @@ function calculateDepth(mat)
             end
         end
     end
+end
+
+function computeConvolutionIdxMap(mat)
+    mat.convIdxMap = zeros(mat.numRows, mat.numCols);
+    for i = 1:mat.numCols
+        for j = 1:mat.numRows
+            mat.convIdxMap(i, j) = AMAT.cantor(i, j);
+        end
+    end
+    mat.maxIdxMapSize = 10 ^ (ceil(log10(sum(mat.convIdxMap, 'all') * mat.numRows * mat.numCols)));
+    mat.incrIdxMap = reshape(1:mat.numRows * mat.numCols, mat.numRows, mat.numCols);
 end
