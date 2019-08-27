@@ -8,7 +8,8 @@ function initialize(mat, img, varargin)
                 'log', 0, ...
                 'followNeighbors', 0, ...
                 'topNeighSelection', 15, ...
-                'pyramid', {}
+                'pyramid', {}, ...
+                'debugLevelConversion', 0, ...
                 };
     opts = parseVarargin(defaults, varargin);
     if isscalar(opts('scales'))
@@ -32,6 +33,7 @@ function initialize(mat, img, varargin)
         mat.usePyramid = 1;
         mat.pyramidOpts = opts('pyramid');
     end
+    mat.debugLevelConversion = opts('debugLevelConversion');
     mat.input = im2double(img);
     mat.scaleIdx = containers.Map(mat.scales, 1:numel(mat.scales));
     initializeShape(mat);

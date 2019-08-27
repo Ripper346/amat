@@ -56,6 +56,8 @@ classdef AMAT < handle
         %levels
         nextMinCost
         nextIdxMinCost
+        debugLevelConversion = 0
+        origin
     end
 
     methods
@@ -95,7 +97,7 @@ classdef AMAT < handle
                     mat.gif = origin.gif;
                     mat.followNeighbors = origin.followNeighbors;
                     mat.topNeighSelection = origin.topNeighSelection;
-                    mat.originScales = origin.scales;
+                    mat.origin = origin;
                 else
                     assert(ismatrix(origin) || size(origin, 3) == 3, 'Input image must be 2D or 3D array')
                     mat.initialize(origin, varargin{:});
