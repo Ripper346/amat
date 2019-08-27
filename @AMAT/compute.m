@@ -15,7 +15,7 @@ function mat = compute(mat)
     for i = size(mat.levels, 2):-1:1
         if i > 1
             mat.levels{i}.setCover(mat.levels{i - 1});
-            mat.levels{i - 1}.convertSmallerCover(mat.levels{i});
+            mat.levels{i - 1}.convertSmallerCover(mat.levels{i}, i - 1);
         else
             mat.levels{i}.setCover();
         end

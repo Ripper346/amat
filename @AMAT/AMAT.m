@@ -32,6 +32,7 @@ classdef AMAT < handle
         covered
         diskCostEffective
         prevLevelCovered
+        originScales
     end
 
     properties(Transient)
@@ -65,7 +66,7 @@ classdef AMAT < handle
         depth = computeDepth(mat, rad);
         rec = computeReconstruction(mat);
         seg = computeSegmentation(mat, minCoverage, minSegment);
-        convertSmallerCover(mat, smallerLevel);
+        convertSmallerCover(mat, smallerLevel, idx);
         [minCost, idxMinCost, yMin, xMin, rMin] = coverNeighbors(mat, xc, yc, x, y, pathNum, numRows, numCols, numScales);
         exportGif(mat, filename);
         pyramid = generatePyramid(mat, img, minSize, filter, k);
@@ -78,6 +79,7 @@ classdef AMAT < handle
         showImg(mat, xc, yc, rc);
         mat = simplify(mat, method, param);
         update(mat, minCost, xc, yc, rc, newPixelsCovered, nextLevel);
+        updateCosts(mat, xc, yc, newPixelsCovered);
 
         function mat = AMAT(origin, varargin)
             if nargin > 0
@@ -93,6 +95,7 @@ classdef AMAT < handle
                     mat.gif = origin.gif;
                     mat.followNeighbors = origin.followNeighbors;
                     mat.topNeighSelection = origin.topNeighSelection;
+                    mat.originScales = origin.scales;
                 else
                     assert(ismatrix(origin) || size(origin, 3) == 3, 'Input image must be 2D or 3D array')
                     mat.initialize(origin, varargin{:});
