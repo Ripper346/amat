@@ -1,18 +1,19 @@
-function costs = computeSquareCosts(sq, mat)
+function costs = computeSquareCosts(sq, mat, scales)
     % Similar to computeDiskCosts() but for square filters.
     % If we only use square filters, then enc is the first channel,
     % otherwise it's the second channel
+    numScales = numel(scales);
     squareIndex = min(2, size(mat.encoding, 5));
     enc = mat.encoding(:, :, :, :, squareIndex);
     enc2 = enc .^ 2;
-    sfilt = cell(1, mat.numScales); sfilt{1} = Square.get(mat.scales(1) - 1);
-    for r = 2:mat.numScales, sfilt{r} = Square.get(mat.scales(r - 1)); end
-    nnzcs= cumsum(cellfun(@nnz, sfilt)); % cumsum of square areas
+    sfilt = cell(1, numScales); sfilt{1} = Square.get(scales(1) - 1);
+    for r = 2:numScales, sfilt{r} = Square.get(scales(r - 1)); end
+    nnzcs = cumsum(cellfun(@nnz, sfilt)); % cumsum of square areas
 
     % Compute costs for axis-aligned squares
-    costs = zeros(mat.numRows, mat.numCols, mat.numChannels, mat.numScales);
+    costs = zeros(mat.numRows, mat.numCols, mat.numChannels, numScales);
     for c = 1:mat.numChannels
-        for r = 1:mat.numScales
+        for r = 1:numScales
             sumMri = zeros(mat.numRows, mat.numCols);
             sumMri2 = zeros(mat.numRows, mat.numCols);
             for i = 1:r
@@ -26,8 +27,8 @@ function costs = computeSquareCosts(sq, mat)
     end
 
     % Same postprocesssing as computeDiskCosts
-    for r = 1:mat.numScales
-        scale = mat.scales(r);
+    for r = 1:numScales
+        scale = scales(r);
         costs([1:scale, end - scale + 1:end], :, :, r, :) = mat.BIG;
         costs(:, [1:scale, end - scale + 1:end], :, r, :) = mat.BIG;
     end
@@ -37,9 +38,9 @@ function costs = computeSquareCosts(sq, mat)
         O = numel(mat.thetas);
         encrot = enc(:, :, :, :, end - O + 1:end);
         enc2rot = enc2(:, :, :, :, end - O + 1:end);
-        squareRotCost = computeRotatedSquareCosts(mat, encrot, enc2rot);
-        for r = 1:mat.numScales
-            scalerot = ceil(sqrt(2) * mat.scales(r)); % square "radius"
+        squareRotCost = computeRotatedSquareCosts(mat, encrot, enc2rot, scales, numScales);
+        for r = 1:numScales
+            scalerot = ceil(sqrt(2) * scales(r)); % square "radius"
             squareRotCost([1:scalerot, end - scalerot + 1:end], :, :, r, :) = mat.BIG;
             squareRotCost(:, [1:scalerot, end - scalerot + 1:end], :, r, :) = mat.BIG;
         end
@@ -59,12 +60,12 @@ function costs = computeSquareCosts(sq, mat)
     costs = squeeze(costs);
 end
 
-function squareRotCost = computeRotatedSquareCosts(mat, enc, enc2)
+function squareRotCost = computeRotatedSquareCosts(mat, enc, enc2, scales, numScales)
     % Integral columns used to efficiently compute sums inside
     % areas of rotated squares
     encic = cumsum(enc, 1);
     enc2ic = cumsum(enc2, 1);
-    pad = ceil(sqrt(2) * mat.scales(end));
+    pad = ceil(sqrt(2) * scales(end));
     encic = padarray(encic, [pad pad], 0, 'pre');
     encic = padarray(encic, [pad pad], 'replicate', 'post');
     enc2ic = padarray(enc2ic, [pad pad], 0, 'pre');
@@ -72,14 +73,14 @@ function squareRotCost = computeRotatedSquareCosts(mat, enc, enc2)
     O = numel(mat.thetas);
 
     % Rotated square filters and integral filters
-    sfilt = cell(1, mat.numScales);
-    rotfilt = cell(O, mat.numScales);
-    pfilt = cell(O, mat.numScales);
-    sfilt{1} = Square.get(mat.scales(1) - 1);
-    for r = 2:mat.numScales
-        sfilt{r} = Square.get(mat.scales(r - 1));
+    sfilt = cell(1, numScales);
+    rotfilt = cell(O, numScales);
+    pfilt = cell(O, numScales);
+    sfilt{1} = Square.get(scales(1) - 1);
+    for r = 2:numScales
+        sfilt{r} = Square.get(scales(r - 1));
     end
-    for r = 1:mat.numScales
+    for r = 1:numScales
         for o = 1:O
             rotfilt{o, r} = imrotate(sfilt, mat.thetas(o));
             % Make sure that the border has a zero-border
@@ -94,10 +95,10 @@ function squareRotCost = computeRotatedSquareCosts(mat, enc, enc2)
     nnzcs = cumsum(cellfun(@nnz, rotfilt), 2);
 
     % Compute heuristic costs for rotated square filters
-    squareRotCost = zeros(mat.numRows, mat.numCols, mat.numChannels, mat.numScales, O);
+    squareRotCost = zeros(mat.numRows, mat.numCols, mat.numChannels, numScales, O);
     for o = 1:O
         for c = 1:mat.numChannels
-            for r = 1:mat.numScales
+            for r = 1:numScales
                 sumMri = zeros(mat.numRows, mat.numCols);
                 sumMri2 = zeros(mat.numRows, mat.numCols);
                 for i = 1:r

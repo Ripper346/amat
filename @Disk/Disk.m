@@ -6,16 +6,16 @@ classdef Disk < handle
     end
 
     methods
-        costs = computeCosts(ds, mat);
-        enc = computeEncodings(ds, mat, inputlab);
+        costs = computeCosts(ds, mat, scales, encoding);
+        enc = computeEncodings(ds, mat, inputlab, scales);
 
         function ds = Disk()
         end
 
-        function filters = getFilters(ds, mat, numScales)
+        function filters = getFilters(ds, scales, numScales)
             filters = cell(1, numScales);
             for i = 1:numScales
-                filters{i} = Disk.get(mat.scales(i));
+                filters{i} = Disk.get(scales(i));
             end
         end
 

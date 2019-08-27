@@ -2,7 +2,7 @@ function showImg(mat, xc, yc, rc)
     if exist('xc', 'var') == 1 && ...
             exist('yc', 'var') == 1 && ...
             exist('rc', 'var') == 1
-        set(0,'CurrentFigure',mat.fig);
+        set(0, 'CurrentFigure', mat.fig);
         showProgress(mat, xc, yc, rc);
         if mat.gif == 1
             mat.exportGif();
@@ -17,10 +17,12 @@ function showFinal(mat)
     if isempty(mat.fig)
         mat.initializeFigure(true);
     end
+    set(0, 'CurrentFigure', mat.fig);
     subplot(221); imshow(mat.axis);           title('Medial axes');
     subplot(222); imshow(mat.radius, []);     title('Radii');
     subplot(223); imshow(mat.input);          title('Original image');
     subplot(224); imshow(mat.reconstruction); title('Reconstructed image');
+    drawnow;
 end
 
 function showProgress(mat, xc, yc, rc)
@@ -37,7 +39,7 @@ function showProgressSelectedDisk(mat, subplotIndex, xc, yc, rc)
     subplot(subplotIndex);
     imshow(reshape(mat.input, mat.numRows, mat.numCols, []));
     viscircles([xc, yc], rc, 'Color', 'k', 'EnhanceVisibility', false);
-    title(sprintf('Selected disk, radius: %d', rc));
+    title(sprintf('Selected disk, radius: %d', mat.scales(rc)));
 end
 
 function showProgressCovered(mat, subplotIndex, xc, yc, rc)
