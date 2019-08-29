@@ -69,7 +69,7 @@ classdef AMAT < handle
         rec = computeReconstruction(mat);
         seg = computeSegmentation(mat, minCoverage, minSegment);
         convertSmallerCover(mat, smallerLevel, idx);
-        [minCost, idxMinCost, yMin, xMin, rMin] = coverNeighbors(mat, xc, yc, x, y, pathNum, numRows, numCols, numScales);
+        coverNeighbors(mat, areaCovered, xc, yc, rc);
         exportGif(mat, filename);
         pyramid = generatePyramid(mat, img, minSize, filter, k);
         area = getPointsCovered(mat, xc, yc, rc)

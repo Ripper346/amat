@@ -41,13 +41,13 @@ function setCover(mat, nextLevel)
     while ~all(mat.covered(:))
         jumpLoop = false;
         % Get disk with min cost
-        if mat.followNeighbors <= 1
-            [minCost, idxMinCost] = min(mat.diskCostEffective(:));
-            [yc, xc, rc] = ind2sub(size(mat.diskCostEffective), idxMinCost);
-            if mat.followNeighbors == 1
-                mat.followNeighbors = 2;
-            end
-        end
+        % if mat.followNeighbors <= 1
+        [minCost, idxMinCost] = min(mat.diskCostEffective(:));
+        [yc, xc, rc] = ind2sub(size(mat.diskCostEffective), idxMinCost);
+        %     if mat.followNeighbors == 1
+        %         mat.followNeighbors = 2;
+        %     end
+        % end
         % if minCost == mat.BIG
         %     warning('All pixels cycled.');
         %     break;
@@ -112,7 +112,7 @@ function setCover(mat, nextLevel)
             printBreakPoints(1) = [];
         end
         if mat.followNeighbors > 0
-            [minCost, idxMinCost, yc, xc, rc] = mat.coverNeighbors(xc, yc, x, y, 0, numRows, numCols, numScales);
+            mat.coverNeighbors(areaCovered, xc, yc, rc);
         end
     end
     fprintf('\n');

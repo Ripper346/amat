@@ -1,34 +1,68 @@
-function [minCost, idxMinCost, yMin, xMin, rMin] = coverNeighbors(mat, xc, yc, x, y, pathNum, numRows, numCols, numScales)
-    while true
-        [minCost, idxMinCost, yMin, xMin, rMin, topIndexes] = getTop(mat);
-        [neighbor] = getTopNeighbor(mat, xc, yc, topIndexes);
-        if isempty(neighbor); return; end
-        [yc, xc, rc] = ind2sub(size(mat.diskCostEffective), neighbor);
-        areaCovered = mat.getPointsCovered(x, y, xc, yc, rc);
-        newPixelsCovered = areaCovered & ~mat.covered;
-        mat.update(minCost, areaCovered, xc, yc, rc, newPixelsCovered, numRows, numCols, numScales);
-        if mat.vistop
-            mat.showImg(xc, yc, rc, numRows, numCols, numScales);
+function coverNeighbors(mat, areaCovered, xc, yc, rc)
+    [neighbors] = getSelectedNeighbors(mat, areaCovered, xc, yc, rc);
+    for n = 1:size(neighbors, 1)
+        xc = neighbors(n, 1);
+        yc = neighbors(n, 2);
+        rc = neighbors(n, 3);
+        if mat.diskCost(yc, xc, rc) ~= mat.BIG
+            nieghAreaCovered = mat.getPointsCovered(xc, yc, mat.scales(rc));
+            newPixelsCovered = nieghAreaCovered & ~mat.covered;
+            if any(newPixelsCovered(:))
+                mat.update(mat.diskCostEffective(yc, xc, rc), xc, yc, rc, newPixelsCovered);
+                if mat.vistop
+                    mat.showImg(xc, yc, rc);
+                end
+            else
+                mat.updateCosts(xc, yc, newPixelsCovered);
+            end
+            mat.coverNeighbors(areaCovered, xc, yc, rc);
         end
-        [minCost, idxMinCost, yMin, xMin, rMin] = mat.coverNeighbors(xc, yc, x, y, pathNum + 1, numRows, numCols, numScales);
     end
 end
 
-function [minCost, idxMinCost, yc, xc, rc, ind] = getTop(mat)
-    [minC, ind] = mink(mat.diskCostEffective(:), mat.topNeighSelection);
-    [yc, xc, rc] = ind2sub(size(mat.diskCostEffective), ind(1));
-    minCost = minC(1);
-    idxMinCost = ind(1);
+function [covered] = getCoveredArea(mat, areaOrRc, xc, yc)
+    if nargin > 2
+        areaCovered = mat.getPointsCovered(xc, yc, mat.scales(areaOrRc));
+    else
+        areaCovered = areaOrRc;
+    end
+    xCover = mat.x .* areaCovered;
+    yCover = mat.y .* areaCovered;
+    top = repmat(areaCovered, 1, mat.numChannels);
+    covered = reshape(mat.input(:) .* top(:), mat.numRows, mat.numCols, mat.numChannels);
+    covered = covered(min(yCover(yCover > 0)):max(yCover(:)), min(xCover(xCover > 0)):max(xCover(:)), :);
+    % if nargin == 2
+    %     % Calculus of image's percentage not in the cover
+    %     exclZone = 1 - sum(areaCovered(:)) / ((max(yCover(:)) - min(yCover(yCover > 0))) * (max(xCover(:)) - min(xCover(xCover > 0))));
+    % end
 end
 
-function [neighbor] = getTopNeighbor(mat, xc, yc, topIndexes)
-    sizes = size(mat.diskCostEffective);
+function [neighbor] = getSelectedNeighbors(mat, areaCovered, xc, yc, rc)
+    mainCover = getCoveredArea(mat, areaCovered);
     neighbor = [];
-    for j = 1:mat.topNeighSelection
-        [y, x, ~] = ind2sub(sizes, topIndexes(j));
-        if abs(xc - x) <= 1 && abs(yc - y) <= 1
-            neighbor = topIndexes(j);
-            break;
+    for i = -1:1
+        for j = -1:1
+            if ~(i == 0 && j == 0) && mat.diskCost(yc + j, xc + i, rc) ~= mat.BIG
+                for rs = numel(mat.scales):-1:1
+                    covered = getCoveredArea(mat, rs, xc + i, yc + j);
+                    try
+                    if size(mainCover, 1) > size(covered, 1)
+                        similarity = ssim(imresize(covered, [size(mainCover, 1), size(mainCover, 2)]), mainCover);
+                    else
+                        similarity = ssim(covered, imresize(mainCover, [size(covered, 1), size(covered, 2)]));
+                    end
+                    catch
+                        continue;
+                    end
+                    if similarity > 0.98
+                        neighbor = [neighbor; [xc + i, yc + j, rs, similarity]];
+                        break;
+                    end
+                end
+            end
         end
+    end
+    if ~isempty(neighbor)
+        neighbor = sortrows(neighbor, [4 3]);
     end
 end
