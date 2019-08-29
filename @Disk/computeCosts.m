@@ -1,4 +1,4 @@
-function costs = computeCosts(ds, mat)
+function costs = computeCosts(ds, mat, scales, encoding)
     % This function computes a heuristic that represents the
     % ability to reconstruct a disk-shaped part of the input image
     % using the mean RGB values computed over the same area.
@@ -24,23 +24,29 @@ function costs = computeCosts(ds, mat)
     % Precompute necessary quantitities. We use circular filters applied on
     % cumulative sums instead of disk filters, for efficiency.
     % Disk costs are always the first channel
-    enc = mat.encoding(:, :, :, :, 1);
+    if nargin < 3
+        encoding = mat.encoding;
+        if nargin < 2
+            scales = mat.scales;
+        end
+    end
+    numScales = numel(scales);
+    enc = encoding(:, :, :, :, 1);
     enc2 = enc .^ 2;
     enccsum = cumsum(enc, 4);
     enc2csum = cumsum(enc2, 4);
-    [numRows, numCols, numChannels, numScales] = size(enc);
     cfilt = cell(1, numScales);
-    cfilt{1} = Disk.get(mat.scales(1) - 1);
+    cfilt{1} = Disk.get(scales(1) - 1);
     for r = 2:numScales
-        cfilt{r} = AMAT.circle(mat.scales(r - 1));
+        cfilt{r} = AMAT.circle(scales(r - 1));
     end
     nnzcd = cumsum(cumsum(cellfun(@nnz, cfilt)));
 
-    costs = zeros(numRows, numCols, numChannels, numScales);
-    for c = 1:numChannels
+    costs = zeros(mat.numRows, mat.numCols, mat.numChannels, numScales);
+    for c = 1:mat.numChannels
         for r = 1:numScales
-            sumMri = zeros(numRows, numCols);
-            sumMri2 = zeros(numRows, numCols);
+            sumMri = zeros(mat.numRows, mat.numCols);
+            sumMri2 = zeros(mat.numRows, mat.numCols);
             for i = 1:r
                 sumMri = sumMri + conv2(enccsum(:, :, c, i), cfilt{r - i + 1}, 'same');
                 sumMri2 = sumMri2 + conv2(enc2csum(:, :, c, i), cfilt{r - i + 1}, 'same');
@@ -55,7 +61,7 @@ function costs = computeCosts(ds, mat)
     % algorithm, caused by inf-inf subtractions and inf/inf divisions.
     % Also, keep in mind that max(0, NaN) = 0.
     for r = 1:numScales
-        scale = mat.scales(r);
+        scale = scales(r);
         costs([1:scale, end - scale + 1:end], :, :, r) = mat.BIG;
         costs(:, [1:scale, end - scale + 1:end], :, r) = mat.BIG;
     end
@@ -64,7 +70,7 @@ function costs = computeCosts(ds, mat)
     costs = max(0, costs);
 
     % Combine costs from different channels
-    if numChannels > 1
+    if mat.numChannels > 1
         wc = [0.5, 0.25, 0.25]; % weights for luminance and color channels
         costs = costs(:, :, 1, :) * wc(1) + costs(:, :, 2, :) * wc(2) + costs(:, :, 3, :) * wc(3);
     end

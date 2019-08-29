@@ -1,5 +1,5 @@
 function logNeighborhood(mat, xc, yc)
-    f = fopen(strcat(mat.progFilename, '_log.csv'), 'a');
+    f = fopen(sprintf('%s_%dx%d_log.csv', mat.progFilename, mat.numCols, mat.numRows), 'a');
     fprintf(f,'%d,%s\n', ...
         nnz(mat.covered), strjoin(getNeighborhoodValues(mat, xc, yc), ','));
     fclose(f);
