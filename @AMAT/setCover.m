@@ -1,4 +1,4 @@
-function setCover(mat, nextLevel)
+function setCover(mat)
     % -------------------------------------------------------------
     % Greedy approximation of the weighted set cover problem.
     % -------------------------------------------------------------
@@ -17,11 +17,9 @@ function setCover(mat, nextLevel)
 
     % Initializations
     mat.initializeFigure();
-    zeroLabNormalized = rgb2labNormalized(zeros(mat.numRows, mat.numCols, mat.numChannels));
     mat.input = reshape(mat.img, mat.numRows * mat.numCols, mat.numChannels);
-    mat.reconstruction = reshape(zeroLabNormalized, mat.numRows * mat.numCols, mat.numChannels);
     if isempty(mat.axis)
-        mat.axis = zeroLabNormalized;
+        mat.axis = rgb2labNormalized(zeros(mat.numRows, mat.numCols, mat.numChannels));
     end
     if isempty(mat.radius)
         mat.radius = zeros(mat.numRows, mat.numCols);
@@ -29,12 +27,7 @@ function setCover(mat, nextLevel)
     mat.price = zeros(mat.numRows, mat.numCols); % error contributed by each point
     % Print remaining pixels to be covered in these points
     mat.printBreakPoints = floor((4:-1:1) .* (mat.numRows * mat.numCols / 5));
-    prepareNextLevel = nargin > 1;
-    if prepareNextLevel
-        [mat.nextMinCost, mat.nextIdxMinCost] = min(nextLevel.diskCostEffective(:));
-    else
-        mat.nextMinCost = 1e-60;
-    end
+    mat.nextMinCost = 1e-60;
 
     % GREEDY ALGORITHM STARTS HERE --------------------------------
     fprintf('Pixels remaining: ');
@@ -54,15 +47,10 @@ function setCover(mat, nextLevel)
             break;
         end
 
-
         if mat.logProgress
             mat.logNeighborhood(xc, yc);
         end
-        if prepareNextLevel
-            mat.update(minCost, xc, yc, rc, newPixelsCovered, nextLevel);
-        else
-            mat.update(minCost, xc, yc, rc, newPixelsCovered);
-        end
+        mat.update(minCost, xc, yc, rc, newPixelsCovered);
         if mat.logProgress
             mat.logNeighborhood(xc, yc);
         end

@@ -78,11 +78,11 @@ classdef AMAT < handle
         mat = group(mat, marginFactor, colortol);
         initialize(mat, img, varargin);
         logNeighborhood(mat, xc, yc);
-        setCover(mat, nextLevel);
+        setCover(mat);
         setCoverParams(mat, img, scales);
         showImg(mat, xc, yc, rc);
         mat = simplify(mat, method, param);
-        update(mat, minCost, xc, yc, rc, newPixelsCovered, nextLevel);
+        update(mat, minCost, xc, yc, rc, newPixelsCovered);
         updateCosts(mat, xc, yc, newPixelsCovered);
 
         function mat = AMAT(origin, varargin)

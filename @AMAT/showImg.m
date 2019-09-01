@@ -21,7 +21,9 @@ function showFinal(mat)
     subplot(221); imshow(mat.axis);           title('Medial axes');
     subplot(222); imshow(mat.radius, []);     title('Radii');
     subplot(223); imshow(mat.input);          title('Original image');
-    subplot(224); imshow(mat.reconstruction); title('Reconstructed image');
+    if ~isempty(mat.reconstruction)
+        subplot(224); imshow(mat.reconstruction); title('Reconstructed image');
+    end
     drawnow;
 end
 
