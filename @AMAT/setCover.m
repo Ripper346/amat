@@ -51,9 +51,6 @@ function setCover(mat)
             mat.logNeighborhood(xc, yc);
         end
         mat.update(minCost, xc, yc, rc, newPixelsCovered);
-        if mat.logProgress
-            mat.logNeighborhood(xc, yc);
-        end
 
         % Visualize progress
         if mat.vistop
