@@ -42,7 +42,6 @@ classdef AMAT < handle
     end
 
     properties(Access=private)
-        topNeighSelection
         followNeighbors
         fig
         gif
@@ -99,7 +98,6 @@ classdef AMAT < handle
                     mat.logProgress = origin.logProgress;
                     mat.gif = origin.gif;
                     mat.followNeighbors = origin.followNeighbors;
-                    mat.topNeighSelection = origin.topNeighSelection;
                     mat.useGpu = origin.useGpu;
                     mat.origin = origin;
                 else
@@ -139,6 +137,23 @@ classdef AMAT < handle
             r = double(r); % make sure r can take negative values
             [x, y] = meshgrid(-r:r, -r:r);
             c = double((x .^ 2 + y .^ 2 <= r ^ 2) & (x .^ 2 + y .^ 2 > (r - 1) ^ 2));
+        end
+
+        function help()
+            % Helper how to use the class
+            fprintf("Input arguments of the constructor. All are optional:" ...
+            + "\n'scales' - [array]{2:41}\n     range of diameters" ...
+            + "\n'ws' - [double]{1e-4}\n     weight to apply to input scales on cost computation" ...
+            + "\n'vistop' - [int]{0}\n     show progess with highest scoring shapes" ...
+            + "\n'shape' - [disk|square|mixed]{'disk'}\n     set covering object" ...
+            + "\n'thetas' - [array]{[]}\n     set of square rotations" ...
+            + "\n'gif' - [0|1]{0}\n     export the covering process as gif. Works only with vistop argument" ...
+            + "\n'log' - [0|1]{0}\n     log process in csv files" ...
+            + "\n'followNeighbors' - [0|1]{0}\n     use the system of neighbor similarity alongside the classic method" ...
+            + "\n'pyramid' - [1|array]{{}}\n     use pyramid reduction system. If an array is provided" ...
+            + "\n'debugLevelConversion' - [0|1]{0}\n     log data from level conversion when using pyramid reduction" ...
+            + "\n'gpu' - [0|1]{0}\n     use gpu structures in the process" ...
+            + "\n");
         end
     end
 end
