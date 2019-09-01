@@ -28,7 +28,7 @@ function setCover(mat, nextLevel)
     end
     mat.price = zeros(mat.numRows, mat.numCols); % error contributed by each point
     % Print remaining pixels to be covered in these points
-    printBreakPoints = floor((4:-1:1) .* (mat.numRows * mat.numCols / 5));
+    mat.printBreakPoints = floor((4:-1:1) .* (mat.numRows * mat.numCols / 5));
     prepareNextLevel = nargin > 1;
     if prepareNextLevel
         [mat.nextMinCost, mat.nextIdxMinCost] = min(nextLevel.diskCostEffective(:));
@@ -39,27 +39,8 @@ function setCover(mat, nextLevel)
     % GREEDY ALGORITHM STARTS HERE --------------------------------
     fprintf('Pixels remaining: ');
     while ~all(mat.covered(:))
-        jumpLoop = false;
-        % Get disk with min cost
-        % if mat.followNeighbors <= 1
         [minCost, idxMinCost] = min(mat.diskCostEffective(:));
         [yc, xc, rc] = ind2sub(size(mat.diskCostEffective), idxMinCost);
-        %     if mat.followNeighbors == 1
-        %         mat.followNeighbors = 2;
-        %     end
-        % end
-        % if minCost == mat.BIG
-        %     warning('All pixels cycled.');
-        %     break;
-        % end
-        % if prepareNextLevel
-        %     minSamePointNL = nextLevel.diskCostEffective((yc - 1) * 2 + 1:(yc - 1) * 2 + 2, (xc - 1) * 2 + 1:(xc - 1) * 2 + 2, :);
-            %if minCost > min(minSamePointNL(:)) %mat.nextMinCost
-            %    mat.diskCost(yc, xc, :) = mat.BIG;
-            %    mat.diskCostEffective(yc, xc, :) = mat.BIG;
-            %    jumpLoop = true;
-            %end
-        % end
 
         if isinf(minCost)
             warning('Stopping: selected disk has infinite cost.');
@@ -69,30 +50,13 @@ function setCover(mat, nextLevel)
         areaCovered = mat.getPointsCovered(xc, yc, mat.scales(rc));
         newPixelsCovered = areaCovered & ~mat.covered;
         if ~any(newPixelsCovered(:))
-            %%% BLOCKING
-%             if mat.prevLevelCovered
-%                 [coveredCount, ~] = hist(mat.prevLevelCovered(:) + areaCovered(:), [0, 1, 2]);
-%                 [currentCoveredCount, ~] = hist(areaCovered(:), [0, 1]);
-%                 if coveredCount(2) - currentCoveredCount(1) == 0
-%                     jumpLoop = true;
-%                     mat.diskCost(yc, xc, :) = mat.BIG;
-%                     mat.diskCostEffective(yc, xc, :) = mat.BIG;
-%                 else
-%                     warning('Stopping: selected disk covers zero (0) new pixels.');
-%                     break;
-%                 end
-            %else
-                warning('Stopping: selected disk covers zero (0) new pixels.');
-                break;
-            %end
+            warning('Stopping: selected disk covers zero (0) new pixels.');
+            break;
         end
 
 
         if mat.logProgress
             mat.logNeighborhood(xc, yc);
-        end
-        if jumpLoop
-            continue;
         end
         if prepareNextLevel
             mat.update(minCost, xc, yc, rc, newPixelsCovered, nextLevel);
@@ -107,15 +71,14 @@ function setCover(mat, nextLevel)
         if mat.vistop
             mat.showImg(xc, yc, rc);
         end
-        if ~isempty(printBreakPoints) && nnz(~mat.covered) < printBreakPoints(1)
-            fprintf('%d...', printBreakPoints(1));
-            printBreakPoints(1) = [];
+        if ~isempty(mat.printBreakPoints) && nnz(~mat.covered) < mat.printBreakPoints(1)
+            fprintf('%d...', mat.printBreakPoints(1));
+            mat.printBreakPoints(1) = [];
         end
         if mat.followNeighbors > 0
-            mat.coverNeighbors(areaCovered, xc, yc, rc);
+            mat.coverNeighbors(xc, yc, rc);
         end
     end
     fprintf('\n');
     mat.input = reshape(mat.input, mat.numRows, mat.numCols, mat.numChannels);
-    % mat.axis = labNormalized2rgb(mat.axis);
 end

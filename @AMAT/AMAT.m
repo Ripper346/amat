@@ -59,6 +59,7 @@ classdef AMAT < handle
         nextIdxMinCost
         debugLevelConversion = 0
         origin
+        printBreakPoints
     end
 
     methods
