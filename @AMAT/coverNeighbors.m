@@ -1,22 +1,28 @@
-function coverNeighbors(mat, areaCovered, xc, yc, rc)
-    [neighbors] = getSelectedNeighbors(mat, areaCovered, xc, yc, rc);
-    for n = 1:size(neighbors, 1)
-        xc = neighbors(n, 1);
-        yc = neighbors(n, 2);
-        rc = neighbors(n, 3);
-        if mat.diskCost(yc, xc, rc) ~= mat.BIG
-            nieghAreaCovered = mat.getPointsCovered(xc, yc, mat.scales(rc));
+function coverNeighbors(mat, xc, yc, rc)
+    mainCover = containers.Map('KeyType', 'double', 'ValueType', 'any');
+    getSelectedNeighbors(mat, xc, yc, mainCover, rc);
+    while mat.currentNeighbor <= size(mat.neighbors, 1)
+        xn = mat.neighbors(mat.currentNeighbor, 1);
+        yn = mat.neighbors(mat.currentNeighbor, 2);
+        rn = mat.neighbors(mat.currentNeighbor, 3);
+        if mat.diskCost(yn, xn, rn) ~= mat.BIG
+            nieghAreaCovered = mat.getPointsCovered(xn, yn, mat.scales(rn));
             newPixelsCovered = nieghAreaCovered & ~mat.covered;
             if any(newPixelsCovered(:))
-                mat.update(mat.diskCostEffective(yc, xc, rc), xc, yc, rc, newPixelsCovered);
+                mat.update(mat.diskCostEffective(yn, xn, rn), xn, yn, rn, newPixelsCovered);
                 if mat.vistop
-                    mat.showImg(xc, yc, rc);
+                    mat.showImg(xn, yn, rn);
+                end
+                if ~isempty(mat.printBreakPoints) && nnz(~mat.covered) < mat.printBreakPoints(1)
+                    fprintf('%d...', mat.printBreakPoints(1));
+                    mat.printBreakPoints(1) = [];
                 end
             else
-                mat.updateCosts(xc, yc, newPixelsCovered);
+                mat.updateCosts(xn, yn, newPixelsCovered);
             end
-            mat.coverNeighbors(areaCovered, xc, yc, rc);
+            getSelectedNeighbors(mat, xn, yn, mainCover, rc, xc, yc);
         end
+        mat.neighbors = mat.neighbors(mat.currentNeighbor + 1:end, :);
     end
 end
 
@@ -28,41 +34,46 @@ function [covered] = getCoveredArea(mat, areaOrRc, xc, yc)
     end
     xCover = mat.x .* areaCovered;
     yCover = mat.y .* areaCovered;
-    top = repmat(areaCovered, 1, mat.numChannels);
-    covered = reshape(mat.input(:) .* top(:), mat.numRows, mat.numCols, mat.numChannels);
+    areaCoveredChannels = repmat(areaCovered, 1, mat.numChannels);
+    covered = reshape(mat.input(:) .* areaCoveredChannels(:), mat.numRows, mat.numCols, mat.numChannels);
     covered = covered(min(yCover(yCover > 0)):max(yCover(:)), min(xCover(xCover > 0)):max(xCover(:)), :);
-    % if nargin == 2
-    %     % Calculus of image's percentage not in the cover
-    %     exclZone = 1 - sum(areaCovered(:)) / ((max(yCover(:)) - min(yCover(yCover > 0))) * (max(xCover(:)) - min(xCover(xCover > 0))));
-    % end
 end
 
-function [neighbor] = getSelectedNeighbors(mat, areaCovered, xc, yc, rc)
-    mainCover = getCoveredArea(mat, areaCovered);
+function getSelectedNeighbors(mat, xc, yc, mainCover, ro, xo, yo)
+    if nargin < 7
+        xo = xc;
+        yo = yc;
+        if nargin < 6
+            mainCover = containers.Map('KeyType', 'double', 'ValueType', 'any');
+        end
+    end
     neighbor = [];
     for i = -1:1
         for j = -1:1
-            if ~(i == 0 && j == 0) && mat.diskCost(yc + j, xc + i, rc) ~= mat.BIG
-                for rs = numel(mat.scales):-1:1
+            if ~(i == 0 && j == 0) && mat.diskCost(yc + j, xc + i, ro) ~= mat.BIG
+                [~, rs] = min(mat.diskCostEffective(yc + j, xc + i, :));
+                if rs <= ro
                     covered = getCoveredArea(mat, rs, xc + i, yc + j);
-                    try
-                    if size(mainCover, 1) > size(covered, 1)
-                        similarity = ssim(imresize(covered, [size(mainCover, 1), size(mainCover, 2)]), mainCover);
-                    else
-                        similarity = ssim(covered, imresize(mainCover, [size(covered, 1), size(covered, 2)]));
+                    if ~isKey(mainCover, rs)
+                        mainCover(rs) = getCoveredArea(mat, rs, xo, yo);
                     end
-                    catch
-                        continue;
-                    end
-                    if similarity > 0.98
-                        neighbor = [neighbor; [xc + i, yc + j, rs, similarity]];
-                        break;
+                    nieghAreaCovered = mat.getPointsCovered(xc + i, yc + j, mat.scales(rs));
+                    newPixelsCovered = nieghAreaCovered & ~mat.covered;
+                    if any(newPixelsCovered(:))
+                        try
+                            similarity = ssim(covered, mainCover(rs));
+                            if similarity > 0.98
+                                neighbor = [neighbor; [xc + i, yc + j, rs, similarity]];
+                            end
+                        catch
+                            fprintf("ssim exc: y: %d, x: %d, r: %d, yo: %d, xo: %d\n", yc, xc, rs, yo, xo);
+                        end
                     end
                 end
             end
         end
     end
     if ~isempty(neighbor)
-        neighbor = sortrows(neighbor, [4 3]);
+        mat.neighbors = sortrows([mat.neighbors; neighbor], [3 4], 'descend');
     end
 end

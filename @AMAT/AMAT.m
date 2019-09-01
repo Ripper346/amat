@@ -33,6 +33,8 @@ classdef AMAT < handle
         diskCostEffective
         prevLevelCovered
         originScales
+        neighbors = []
+        currentNeighbor = 1
     end
 
     properties(Transient)
@@ -53,11 +55,11 @@ classdef AMAT < handle
         x
         y
         isLevel = 0
-        %levels
         nextMinCost
         nextIdxMinCost
         debugLevelConversion = 0
         origin
+        printBreakPoints
     end
 
     methods
@@ -69,7 +71,7 @@ classdef AMAT < handle
         rec = computeReconstruction(mat);
         seg = computeSegmentation(mat, minCoverage, minSegment);
         convertSmallerCover(mat, smallerLevel, idx);
-        coverNeighbors(mat, areaCovered, xc, yc, rc);
+        coverNeighbors(mat, xc, yc, rc);
         exportGif(mat, filename);
         pyramid = generatePyramid(mat, img, minSize, filter, k);
         area = getPointsCovered(mat, xc, yc, rc)
