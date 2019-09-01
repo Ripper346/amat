@@ -12,7 +12,10 @@ function [numNewPixelsCovered, diskCost, diskCostPerPixel, diskCostEffective] = 
     diskCost = computeCosts(mat, scales, encoding);
     diskAreas = cellfun(@nnz, filters);
     numNewPixelsCovered = repmat(reshape(diskAreas, 1, 1, []), [mat.numRows, mat.numCols]);
-
+    if mat.useGpu
+        diskCost = gpuArray(diskCost);
+        numNewPixelsCovered = gpuArray(numNewPixelsCovered);
+    end
     % Add scale-dependent cost term to favor the selection of larger disks.
     diskCostPerPixel = diskCost ./ numNewPixelsCovered;
     diskCostEffective = bsxfun(@plus, diskCostPerPixel, reshape(mat.ws ./ scales, 1, 1, []));

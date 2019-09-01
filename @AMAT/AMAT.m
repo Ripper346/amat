@@ -35,6 +35,7 @@ classdef AMAT < handle
         originScales
         neighbors = []
         currentNeighbor = 1
+        useGpu
     end
 
     properties(Transient)
@@ -99,6 +100,7 @@ classdef AMAT < handle
                     mat.gif = origin.gif;
                     mat.followNeighbors = origin.followNeighbors;
                     mat.topNeighSelection = origin.topNeighSelection;
+                    mat.useGpu = origin.useGpu;
                     mat.origin = origin;
                 else
                     assert(ismatrix(origin) || size(origin, 3) == 3, 'Input image must be 2D or 3D array')

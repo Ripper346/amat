@@ -24,7 +24,11 @@ function setCover(mat)
     if isempty(mat.radius)
         mat.radius = zeros(mat.numRows, mat.numCols);
     end
-    mat.price = zeros(mat.numRows, mat.numCols); % error contributed by each point
+    if mat.useGpu
+        mat.price = zeros(mat.numRows, mat.numCols, 'gpuArray');
+    else
+        mat.price = zeros(mat.numRows, mat.numCols); % error contributed by each point
+    end
     % Print remaining pixels to be covered in these points
     mat.printBreakPoints = floor((4:-1:1) .* (mat.numRows * mat.numCols / 5));
     mat.nextMinCost = 1e-60;
@@ -41,7 +45,11 @@ function setCover(mat)
         end
 
         areaCovered = mat.getPointsCovered(xc, yc, mat.scales(rc));
-        newPixelsCovered = areaCovered & ~mat.covered;
+        if mat.useGpu
+            newPixelsCovered = gpuArray(areaCovered & ~mat.covered);
+        else
+            newPixelsCovered = areaCovered & ~mat.covered;
+        end
         if ~any(newPixelsCovered(:))
             warning('Stopping: selected disk covers zero (0) new pixels.');
             break;

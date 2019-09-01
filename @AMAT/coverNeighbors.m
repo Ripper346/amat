@@ -7,7 +7,11 @@ function coverNeighbors(mat, xc, yc, rc)
         rn = mat.neighbors(mat.currentNeighbor, 3);
         if mat.diskCost(yn, xn, rn) ~= mat.BIG
             nieghAreaCovered = mat.getPointsCovered(xn, yn, mat.scales(rn));
-            newPixelsCovered = nieghAreaCovered & ~mat.covered;
+            if mat.useGpu
+                newPixelsCovered = gpuArray(nieghAreaCovered & ~mat.covered);
+            else
+                newPixelsCovered = nieghAreaCovered & ~mat.covered;
+            end
             if any(newPixelsCovered(:))
                 mat.update(mat.diskCostEffective(yn, xn, rn), xn, yn, rn, newPixelsCovered);
                 if mat.vistop

@@ -10,6 +10,7 @@ function initialize(mat, img, varargin)
                 'topNeighSelection', 15, ...
                 'pyramid', {}, ...
                 'debugLevelConversion', 0, ...
+                'gpu', 0 ...
                 };
     opts = parseVarargin(defaults, varargin);
     if isscalar(opts('scales'))
@@ -34,6 +35,7 @@ function initialize(mat, img, varargin)
         mat.pyramidOpts = opts('pyramid');
     end
     mat.debugLevelConversion = opts('debugLevelConversion');
+    mat.useGpu = opts('gpu');
     mat.input = im2double(img);
     mat.scaleIdx = containers.Map(mat.scales, 1:numel(mat.scales));
     initializeShape(mat);
