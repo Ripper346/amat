@@ -1,5 +1,36 @@
 function convertSmallerCover(mat, smallerLevel, idx)
 % Convert axis and radius matrices to one times bigger level
+    if mat.scales == 0
+        % no scales to cover, copy plain the solution
+        convertToEmptyLevel(mat, smallerLevel);
+    else
+        convertToWorkerLevel(mat, smallerLevel, idx);
+    end
+end
+
+function convertToEmptyLevel(mat, smallerLevel)
+    mat.radius = zeros(mat.numRows, mat.numCols);
+    mat.axis = rgb2labNormalized(zeros(mat.numRows, mat.numCols, mat.numChannels));
+    for y = 1:smallerLevel.numRows
+        for x = 1:smallerLevel.numCols
+            for yb = 1:2
+                for xb = 1:2
+                    yc = (y - 1) * 2 + yb;
+                    xc = (x - 1) * 2 + xb;
+                    if mat.numCols > xc && mat.numRows > yc
+                        rb = smallerLevel.radius(y, x) * 2;
+                        if rb > 1
+                            mat.axis(yc, xc, :) = smallerLevel.axis(y, x, :);
+                            mat.radius(yc, xc) = rb;
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+
+function convertToWorkerLevel(mat, smallerLevel, idx)
     scales = getBiggerScales(smallerLevel, idx);
     [numNewPixelsCoveredBig, diskCostBig, diskCostPerPixelBig, diskCostEffBig, filters] = getBiggerCosts(mat, scales);
     scales = horzcat(mat.scales, scales);
@@ -20,7 +51,7 @@ function convertSmallerCover(mat, smallerLevel, idx)
                 for xb = 1:2
                     yc = (y - 1) * 2 + yb;
                     xc = (x - 1) * 2 + xb;
-                    if mat.numCols > yc && mat.numRows > xc
+                    if mat.numCols > xc && mat.numRows > yc
                         rb = smallerLevel.radius(y, x) * 2;
                         if rb > 1
                             [pointMinCost, rc] = min(diskCostEffBig(yc, xc, :));
