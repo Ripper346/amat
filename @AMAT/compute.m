@@ -31,9 +31,11 @@ function mat = compute(mat)
 end
 
 function setMainAttributes(mat)
-    mat.filters = mat.initializeFilters();
     [mat.x, mat.y] = meshgrid(1:mat.numCols, 1:mat.numRows);
     mat.radius = mat.levels{1}.radius;
+    mat.scales = min(mat.radius(mat.radius > 0)):max(mat.radius(:));
+    mat.scaleIdx = containers.Map(mat.scales, 1:numel(mat.scales));
+    mat.filters = mat.initializeFilters();
     mat.axis = labNormalized2rgb(mat.levels{1}.axis);
     mat.input = reshape(mat.input, mat.numRows, mat.numCols, mat.numChannels);
     calculateDepth(mat);
@@ -69,8 +71,8 @@ end
 function calculateDepth(mat)
 % Calculate depth matrix. Radius matrix has to be populated.
     mat.depth = zeros(mat.numRows, mat.numCols);
-    for y = 1:mat.numCols
-        for x = 1:mat.numRows
+    for y = 1:mat.numRows
+        for x = 1:mat.numCols
             if mat.radius(y, x) > 0
                 areaCovered = mat.getPointsCovered(x, y, mat.radius(y, x));
                 mat.depth(areaCovered) = mat.depth(areaCovered) + 1;

@@ -10,8 +10,14 @@ function rec = computeReconstruction(mat)
         x = xc(p); y = yc(p);
         r = round(mat.radius(y, x));
         c = mat.axis(y, x, :);
-        rec((y-r):(y+r), (x-r):(x+r), :) = ...
-            rec((y-r):(y+r), (x-r):(x+r), :) + bsxfun(@times, diskf{mat.scaleIdx(r)}, c);
+        try
+            disk = bsxfun(@times, diskf{mat.scaleIdx(r)}, c);
+            rec((y-r):min(mat.numRows, y+r), (x-r):min(mat.numCols, x+r), :) = ...
+                rec((y-r):min(mat.numRows, y+r), (x-r):min(mat.numCols, x+r), :) + ...
+                disk(1:min(mat.numRows, y+r)-y+r+1, 1:min(mat.numCols, x+r)-x+r+1, :);
+        catch
+            fprintf('exception\n');
+        end
     end
     rec = bsxfun(@rdivide, rec, mat.depth);
     % Sometimes not all pixels are covered (e.g. at image corners
