@@ -2,6 +2,8 @@ function initializeFigure(mat, forced)
     if mat.vistop > 0 || exist('forced', 'var') == 1
         if mat.vistop > 0
             name = 'Progress';
+        elseif mat.isLevel == 1
+            name = sprintf('Results %dx%d', mat.numRows, mat.numCols);
         else
             name = 'Results';
         end

@@ -40,7 +40,7 @@ end
 function showProgressSelectedDisk(mat, subplotIndex, xc, yc, rc)
     subplot(subplotIndex);
     imshow(reshape(mat.input, mat.numRows, mat.numCols, []));
-    viscircles([xc, yc], rc, 'Color', 'k', 'EnhanceVisibility', false);
+    viscircles([xc, yc], mat.scales(rc), 'Color', 'k', 'EnhanceVisibility', false);
     title(sprintf('Selected disk, radius: %d', mat.scales(rc)));
 end
 
@@ -50,9 +50,9 @@ function showProgressCovered(mat, subplotIndex, xc, yc, rc)
     [yy, xx, rr] = ind2sub([mat.numRows, mat.numCols, mat.numScales], indSorted);
     subplot(subplotIndex);
     imshow(bsxfun(@times, reshape(mat.input, mat.numRows, mat.numCols, []), double(~mat.covered)));
-    viscircles([xx, yy], rr, 'Color', 'w', 'EnhanceVisibility', false, 'Linewidth', 0.5);
-    viscircles([xx(1), yy(1)], rr(1), 'Color', 'b', 'EnhanceVisibility', false);
-    viscircles([xc, yc], rc, 'Color', 'y', 'EnhanceVisibility', false);
+    viscircles([xx, yy], mat.scales(rr), 'Color', 'w', 'EnhanceVisibility', false, 'Linewidth', 0.5);
+    viscircles([xx(1), yy(1)], mat.scales(rr(1)), 'Color', 'b', 'EnhanceVisibility', false);
+    viscircles([xc, yc], mat.scales(rc), 'Color', 'y', 'EnhanceVisibility', false);
     title(sprintf('Covered %d/%d, mat.numCols: Top-%d disks, \nB: Top-1 disk, Y: previous disk', ...
         nnz(mat.covered), mat.numRows * mat.numCols, mat.vistop));
 end
